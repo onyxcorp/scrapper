@@ -46,11 +46,11 @@ var Buscape = require('../utils/BuscapeAPI'),
 
 connections = {
     max: {
-        crawler: 20,
-        getProducts: 20,
-        scrapeProductPage: 20,
-        getOffers: 20,
-        saveProductsData: 20
+        crawler: 40,
+        getProducts: 40,
+        scrapeProductPage: 40,
+        getOffers: 40,
+        saveProductsData: 40
     }
 };
 
@@ -95,10 +95,10 @@ function updateProducts(updateCallback) {
 
         function getProducts(idCategory, queueCallback) {
 
-            function shouldDoRecursiveCall(currentPage, totalPages, productsList, productsPriceHistoryList) {
+            function findProductList(currentPage, totalPages, productsList, productsPriceHistoryList) {
 
                 currentPage = currentPage || 1;
-                totalPages = 5; // totalPages || null;  // TODO testing with 3 pages only
+                totalPages = 25; // totalPages || null;
                 productsList = productsList || [];
                 productsPriceHistoryList = productsPriceHistoryList || [];
 
@@ -118,35 +118,27 @@ function updateProducts(updateCallback) {
                     attempts[currentPage] = 1;
                     debug('Ammount of attempts: ' + attempts[currentPage] || 1);
                     debug('Trying to fetch page ' + currentPage);
-                    findProductList(currentPage, totalPages, productsList, productsPriceHistoryList);
                 } else if (attempts[currentPage] == 2) {
                     // second run, try again
                     debug('Ammount of attempts: ' + attempts[currentPage] || 1);
                     debug('Trying to fetch page ' + currentPage);
-                    findProductList(currentPage, totalPages, productsList, productsPriceHistoryList);
                 } else {
                     // tryed two times and no results, time to move on
                     currentPage += 1;
                     debug('Ammount of attempts: ' + attempts[currentPage] || 1);
                     debug('Trying to fetch page ' + currentPage);
-                    findProductList(currentPage, totalPages, productsList, productsPriceHistoryList);
                 }
-            }
-
-            function findProductList(currentPage, totalPages, productsList, productsPriceHistoryList) {
 
                 buscape.findProductList({categoryId:idCategory, page:currentPage, results: 40}, function (res) {
 
                     if (res instanceof Error) {
-                        debug('findProductList error');
                         logsData.save('ProductWorker', 'findProductList error: ' + res.message, function (err) {
                             debug('we got an error');
                             // going to try a second attempt with the same stats
                             attempts[currentPage] = attempts[currentPage] + 1;
-                            shouldDoRecursiveCall(currentPage, totalPages, productsList, productsPriceHistoryList);
+                            findProductList(currentPage, totalPages, productsList, productsPriceHistoryList);
                         });
                     } else if (res) {
-                        debug('findProductList success');
                         var responseProducts,
                             responseCategory,
                             newProductsList,
@@ -266,7 +258,7 @@ function updateProducts(updateCallback) {
 
                             // check if we are at the last page or not
                             var nextPage = currentPage + 1;
-                            shouldDoRecursiveCall(nextPage, totalPages, productsList, productsPriceHistoryList);
+                            findProductList(nextPage, totalPages, productsList, productsPriceHistoryList);
 
                         } else {
                             logsData.save('ProductWorker', 'No products found today', function (err) {
@@ -282,7 +274,7 @@ function updateProducts(updateCallback) {
             }
 
             if (idCategory) {
-                shouldDoRecursiveCall(1);
+                findProductList(1);
             } else {
                 logsData.save('ProductWorker', 'No category to look for', function (err) {
                     queueCallback(false);
@@ -334,7 +326,6 @@ function updateProducts(updateCallback) {
 
         // Retrive some product offer information
         function getOffers(task, queueCallback) {
-            debug('getOffers');
             var productId;
 
             // shortcut to buscape id present at the model
@@ -347,8 +338,8 @@ function updateProducts(updateCallback) {
                     offerAttempts[productId] = 1;
                     debug('Ammount of attempts: ' + offerAttempts[productId]);
                     debug('Trying to fetch product ' + productId);
-                } else if (offerAttempts[productId] === 2 ) {
-                    // we are the second run, try to call getOffers again
+                } else if (offerAttempts[productId] === 2 || offerAttempts[productId] === 3) {
+                    // we are at the second/third run, try to call getOffers again
                     debug('Ammount of attempts: ' + offerAttempts[productId]);
                     debug('Trying to fetch product ' + productId);
                 } else {
@@ -507,7 +498,6 @@ function updateProducts(updateCallback) {
 
         // Retrive product extra data information from product page
         function scrapeProductPage(task, queueCallback) {
-            debug('scrapeProductPage');
             var crawlerLink,
                 stringReplace,
                 requiredData,
