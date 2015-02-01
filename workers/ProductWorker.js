@@ -327,7 +327,10 @@ function updateProducts(updateCallback) {
         var queueScrape,
             queueOffer,
             queueScrapeDone,
+            offerAttempts,
             queueOfferDone;
+
+        offerAttempts = {};
 
         // Retrive some product offer information
         function getOffers(task, queueCallback) {
@@ -338,13 +341,31 @@ function updateProducts(updateCallback) {
             productId = task.id_buscape;
 
             if (productId) {
+
+                // if there is no productId yet, means that it is our first attempt
+                if (!offerAttempts[productId]) {
+                    offerAttempts[productId] = 1;
+                    debug('Ammount of attempts: ' + offerAttempts[productId]);
+                    debug('Trying to fetch product ' + productId);
+                } else if (offerAttempts[productId] === 2 ) {
+                    // we are the second run, try to call getOffers again
+                    debug('Ammount of attempts: ' + offerAttempts[productId]);
+                    debug('Trying to fetch product ' + productId);
+                } else {
+                    debug('Ammount of attempts: ' + offerAttempts[productId]);
+                    debug('No more try to fetch product ' + productId);
+                    // im tired of this shitty product on this shitty api, next!
+                    queueCallback(false);
+                    return;
+                }
+
                 // simple call the api with some parameters, fetching the product information
                 // and it's offers
                 buscape.findOfferList({productId: productId}, function (res) {
                     if (res instanceof Error) {
-                        debug('findOfferList error');
+                        offerAttempts[productId] = offerAttempts[productId] + 1;
                         logsData.save('ProductWorker', 'findOfferList error: ' + res.message, function (err) {
-                            queueCallback(false);
+                            getOffers(task, queueCallback);
                         });
                     } else if (res) {
                         var list;
@@ -455,7 +476,9 @@ function updateProducts(updateCallback) {
                                         list.offers.best_discount_price = false;
                                         list.offers.best_discount = false;
                                     }
+
                                     queueCallback(list);
+
                                 } else {
                                     queueCallback(false);
                                 }
@@ -580,6 +603,7 @@ function updateProducts(updateCallback) {
         }
 
         if (categoryProducts && Object.keys(categoryProducts).length) {
+
             queueScrape = async.queue(scrapeProductPage, connections.max.scrapeProductPage);
             queueOffer = async.queue(getOffers, connections.max.getOffers);
 
