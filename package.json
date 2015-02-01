@@ -1,0 +1,48 @@
+{
+  "name": "onyx-lomadee",
+  "version": "1.0.0",
+  "description": "fetchs data from lomadee offers",
+  "main": "server.js",
+  "dependencies": {
+    "async": "^0.9.0",
+    "browserify-middleware": "^4.1.0",
+    "collection": "git+https://github.com/onyxcorp/collection",
+    "crawler": "^0.4.1",
+    "express": "^4.10.6",
+    "firebase": "^2.0.6",
+    "jsonschema": "^1.0.0",
+    "lodash-node": "git+https://github.com/lodash/lodash-node.git#2.4.1",
+    "model": "git+https://github.com/onyxcorp/model",
+    "node-jsx": "^0.12.4",
+    "node-schedule": "^0.1.13",
+    "react": "^0.12.1",
+    "reactify": "^0.17.1",
+    "superagent": "^0.21.0",
+    "transmuter": "git+https://github.com/onyxcorp/transmuter",
+    "underscore.string": "^2.4.0",
+    "valid-url": "^1.0.9"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "browserify": {
+    "transform": [
+      "reactify"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/onyxcorp/scrapper.git"
+  },
+  "keywords": [
+    "onyx",
+    "lomadee",
+    "offers"
+  ],
+  "author": "fabio zaffani",
+  "license": "ISC",
+  "bugs": {},
+  "homepage": "https://github.com/onyxcorp/scrapper"
+}
