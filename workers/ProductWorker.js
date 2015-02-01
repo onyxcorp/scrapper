@@ -46,11 +46,11 @@ var Buscape = require('../utils/BuscapeAPI'),
 
 connections = {
     max: {
-        crawler: 10,
-        getProducts: 10,
-        scrapeProductPage: 10,
-        getOffers: 10,
-        saveProductsData: 10
+        crawler: 20,
+        getProducts: 20,
+        scrapeProductPage: 20,
+        getOffers: 20,
+        saveProductsData: 20
     }
 };
 
@@ -85,26 +85,68 @@ function updateProducts(updateCallback) {
     function findProducts(callback) {
 
         var queueProducts,
+            attempts,
+            maxErrors,
             categoryProducts;
 
+        maxErrors = 3;
         categoryProducts = {};
+        attempts = {};
 
         function getProducts(idCategory, queueCallback) {
 
-            function recursiveFindProductList(currentPage, totalPages, productsList, productsPriceHistoryList) {
+            function shouldDoRecursiveCall(currentPage, totalPages, productsList, productsPriceHistoryList) {
 
                 currentPage = currentPage || 1;
                 totalPages = 5; // totalPages || null;  // TODO testing with 3 pages only
                 productsList = productsList || [];
                 productsPriceHistoryList = productsPriceHistoryList || [];
 
-                buscape.findProductList({categoryId:idCategory, page:currentPage, results: 30}, function (res) {
+                // we should just leave if the currentPage exceedd by 1 the total pages
+                if (currentPage > totalPages) {
+                    debug('All fetched');
+                    queueCallback({
+                        products: productsList,
+                        priceHistory: productsPriceHistoryList
+                    });
+                    return;
+                }
+
+                // first try
+                if (!attempts[currentPage]) {
+                    // set error and try to fetch for the first time
+                    attempts[currentPage] = 1;
+                    debug('Ammount of attempts: ' + attempts[currentPage] || 1);
+                    debug('Trying to fetch page ' + currentPage);
+                    findProductList(currentPage, totalPages, productsList, productsPriceHistoryList);
+                } else if (attempts[currentPage] == 2) {
+                    // second run, try again
+                    debug('Ammount of attempts: ' + attempts[currentPage] || 1);
+                    debug('Trying to fetch page ' + currentPage);
+                    findProductList(currentPage, totalPages, productsList, productsPriceHistoryList);
+                } else {
+                    // tryed two times and no results, time to move on
+                    currentPage += 1;
+                    debug('Ammount of attempts: ' + attempts[currentPage] || 1);
+                    debug('Trying to fetch page ' + currentPage);
+                    findProductList(currentPage, totalPages, productsList, productsPriceHistoryList);
+                }
+            }
+
+            function findProductList(currentPage, totalPages, productsList, productsPriceHistoryList) {
+
+                buscape.findProductList({categoryId:idCategory, page:currentPage, results: 40}, function (res) {
+
                     if (res instanceof Error) {
+                        debug('findProductList error');
                         logsData.save('ProductWorker', 'findProductList error: ' + res.message, function (err) {
-                            queueCallback(false);
+                            debug('we got an error');
+                            // going to try a second attempt with the same stats
+                            attempts[currentPage] = attempts[currentPage] + 1;
+                            shouldDoRecursiveCall(currentPage, totalPages, productsList, productsPriceHistoryList);
                         });
                     } else if (res) {
-                        debug('response');
+                        debug('findProductList success');
                         var responseProducts,
                             responseCategory,
                             newProductsList,
@@ -119,7 +161,6 @@ function updateProducts(updateCallback) {
                         }
 
                         if (responseProducts) {
-                            debug('response products');
                             // get the current page products list
                             newProductsList = lodash.collections.map(res.body.product, function (data, key) {
 
@@ -176,7 +217,6 @@ function updateProducts(updateCallback) {
                                 categories = {};
                                 categories[lodash.string.slugify(responseCategory.name)] = true;
 
-                                debug('returning response');
                                 // Blend everything togheter
                                 return {
                                     id_buscape: product.id,
@@ -225,27 +265,16 @@ function updateProducts(updateCallback) {
                             productsPriceHistoryList = productsPriceHistoryList.concat(newProductsPriceHistoryList);
 
                             // check if we are at the last page or not
-                            if (currentPage === totalPages) {
-                                debug('finishing queries');
-                                queueCallback({
-                                    products: productsList,
-                                    priceHistory: productsPriceHistoryList
-                                });
-                            } else {
-                                debug('recursive new call');
-                                // recursively call the function again with a new page
-                                currentPage += 1;
-                                recursiveFindProductList(currentPage, totalPages, productsList, productsPriceHistoryList);
-                            }
+                            var nextPage = currentPage + 1;
+                            shouldDoRecursiveCall(nextPage, totalPages, productsList, productsPriceHistoryList);
+
                         } else {
-                            debug('no products');
                             logsData.save('ProductWorker', 'No products found today', function (err) {
                                 queueCallback(false);
                             });
                         }
                     } else {
-                        debug('no res');
-                        logsData.save('ProductWorker', 'Problems with BuscapeAPI request on recursiveFindProductList', function (err) {
+                        logsData.save('ProductWorker', 'Problems with BuscapeAPI request on findProductList', function (err) {
                             queueCallback(false);
                         });
                     }
@@ -253,7 +282,7 @@ function updateProducts(updateCallback) {
             }
 
             if (idCategory) {
-                recursiveFindProductList(1);
+                shouldDoRecursiveCall(1);
             } else {
                 logsData.save('ProductWorker', 'No category to look for', function (err) {
                     queueCallback(false);
@@ -262,11 +291,11 @@ function updateProducts(updateCallback) {
         }
 
 
-
         // get all categories, a collection will be returned
         categories.db.getAll( function (categories) {
 
             if (categories.length) {
+
                 queueProducts = async.queue(getProducts, connections.max.getProducts);
 
                 categories.forEach(function (category) {
@@ -281,6 +310,7 @@ function updateProducts(updateCallback) {
 
                 // assign a callback when all queues are done
                 queueProducts.drain = function() {
+                    // categoryProducts should be a list of products
                     callback(null, categoryProducts);
                 };
             } else {
@@ -311,8 +341,8 @@ function updateProducts(updateCallback) {
                 // simple call the api with some parameters, fetching the product information
                 // and it's offers
                 buscape.findOfferList({productId: productId}, function (res) {
-                    debug('find offer list');
                     if (res instanceof Error) {
+                        debug('findOfferList error');
                         logsData.save('ProductWorker', 'findOfferList error: ' + res.message, function (err) {
                             queueCallback(false);
                         });
@@ -324,7 +354,6 @@ function updateProducts(updateCallback) {
 
                             // there is offers for this product?
                             if (res.body.offer) {
-                                debug('res.body.offer');
                                 var pluckedOffers,
                                     bestOffer,
                                     worstOffer,
@@ -412,7 +441,6 @@ function updateProducts(updateCallback) {
                                         list.offers.best_discount_price = list.offers.worst_offer.price.value - list.offers.best_offer.price.value;
                                         var tempDiscount = 1 - list.offers.best_offer.price.value / list.offers.worst_offer.price.value;
                                         list.offers.best_discount = parseFloat(tempDiscount.toFixed(3));
-                                        debug('done > 1');
                                     } else if (offersLength === 1) {
                                         // there is only one offer, so we have a best_offer but no worst_offer
                                         // TODO must remove seller.id
@@ -420,42 +448,34 @@ function updateProducts(updateCallback) {
                                         list.offers.worst_offer = {};
                                         list.offers.best_discount_price = false;
                                         list.offers.best_discount = false;
-                                        debug('done == 1');
                                     } else {
                                         // there are no offers
                                         list.offers.best_offer = false;
                                         list.offers.worst_offer = false;
                                         list.offers.best_discount_price = false;
                                         list.offers.best_discount = false;
-                                        debug('done none');
                                     }
-                                    debug('call callback');
                                     queueCallback(list);
                                 } else {
-                                    debug('no plucked offers length');
                                     queueCallback(false);
                                 }
 
                             } else {
                                 // No offers for this product, do nothing
-                                debug('No offers for this product');
                                 queueCallback(false); // list is initially set as {}
                             }
                         } else {
-                            debug('No response from the api');
                             logsData.save('ProductWorker', 'No response from the api', function (err) {
                                 queueCallback(false);
                             });
                         }
                     } else {
-                        debug('Problems with BuscapeAPI');
                         logsData.save('ProductWorker', 'Problems with BuscapeAPI request on findProductsExtraData', function (err) {
                             queueCallback(false);
                         });
                     }
                 });
             } else {
-                debug('Product link/buscape_id not provided');
                 logsData.save('ProductWorker', 'Product link/buscape_id not provided or invalid for ' + task.title, function (err) {
                     queueCallback(false);
                 });
@@ -552,55 +572,62 @@ function updateProducts(updateCallback) {
             }
         }
 
-        queueScrape = async.queue(scrapeProductPage, connections.max.scrapeProductPage);
-        queueOffer = async.queue(getOffers, connections.max.getOffers);
-
-        // iterate over each category of products (suplementos, etc)
-        lodash.collections.forEach(categoryProducts, function (categoryData, categoryKey) {
-
-            // iterate over each product inside a category (array)
-            lodash.collections.forEach(categoryData.products, function (productData, productKey) {
-                queueScrape.push(productData, function (res) {
-                    if (res) {
-                        // ugly as fuck, merge the current product with the new data
-                        lodash.objects.merge(categoryProducts[categoryKey].products[productKey], res);
-                    } else {
-                        // The error were already registered before the callback
-                    }
-                });
-
-                // prepare worker product for offers update
-                queueOffer.push(productData, function (res) {
-                    if (res) {
-                        debug('merge things');
-                        // ugly as fuck, merge the current product with the new data
-                        lodash.objects.merge(categoryProducts[categoryKey].products[productKey], res);
-                    } else {
-                        debug('no merge things');
-                        // The error were already registered before the callback
-                    }
-                });
-            });
-        });
-
-        // assign a callback when all queues are done
-        queueScrape.drain = function() {
-            debug('scrape drain');
-            queueScrapeDone = true;
-            next();
-        };
-
-        queueOffer.drain = function () {
-            debug('offer drain');
-            queueOfferDone = true;
-            next();
-        };
-
         function next () {
             debug('next');
             debug(queueScrapeDone);
             debug(queueOfferDone);
             if (queueScrapeDone && queueOfferDone) callback(null, categoryProducts);
+        }
+
+        if (categoryProducts && Object.keys(categoryProducts).length) {
+            queueScrape = async.queue(scrapeProductPage, connections.max.scrapeProductPage);
+            queueOffer = async.queue(getOffers, connections.max.getOffers);
+
+            // iterate over each category of products (suplementos, etc)
+            lodash.collections.forEach(categoryProducts, function (categoryData, categoryKey) {
+
+                // iterate over each product inside a category (array)
+                lodash.collections.forEach(categoryData.products, function (productData, productKey) {
+                    queueScrape.push(productData, function (res) {
+                        if (res) {
+                            // ugly as fuck, merge the current product with the new data
+                            lodash.objects.merge(categoryProducts[categoryKey].products[productKey], res);
+                        } else {
+                            // The error were already registered before the callback
+                        }
+                    });
+
+                    // prepare worker product for offers update
+                    queueOffer.push(productData, function (res) {
+                        if (res) {
+                            // ugly as fuck, merge the current product with the new data
+                            lodash.objects.merge(categoryProducts[categoryKey].products[productKey], res);
+                        } else {
+                            // The error were already registered before the callback
+                        }
+                    });
+                });
+            });
+
+            // assign a callback when all queues are done
+            queueScrape.drain = function() {
+                debug('scrap drain');
+                queueScrapeDone = true;
+                next();
+            };
+
+            queueOffer.drain = function () {
+                debug('offer drain');
+                queueOfferDone = true;
+                next();
+            };
+
+        } else {
+            logsData.save('ProductWorker', 'Sem category ou length para categoryProducts', function (err) {
+                queueScrapeDone = true;
+                queueOfferDone = true;
+                next();
+            });
         }
     }
 

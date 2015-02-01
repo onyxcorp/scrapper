@@ -22,7 +22,7 @@ function Buscape(options) {
 Buscape.prototype._request = function (type, method, query, cb) {
     request
         .get(this._requestUrl(type, method))
-        .timeout('15000')
+        .timeout('10000')
         .query(query)
         .set('Accept', 'application/json')
         .end(function (err, res) {
