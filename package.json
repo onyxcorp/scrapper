@@ -20,6 +20,7 @@
     "superagent": "^0.21.0",
     "transmuter": "git+https://github.com/onyxcorp/transmuter",
     "underscore.string": "^2.4.0",
+    "underscore.inflections": "^0.2.1",
     "valid-url": "^1.0.9"
   },
   "devDependencies": {},

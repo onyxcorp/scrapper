@@ -7,11 +7,7 @@
 */
 var Buscape = require('../utils/BuscapeAPI'),
     categoriesData = require('../data/CategoriesData'),
-    packagesData = require('../data/PackagesData'),
-    suppliersData = require('../data/SuppliersData'),
-    shapesData = require('../data/ShapesData'),
-    weightsData = require('../data/WeightsData'),
-    volumesData = require('../data/VolumesData'),
+    filtersData = require('../data/FiltersData'),
     logsData = require('../data/LogsData'),
     lodash = {
         arrays: {
@@ -31,12 +27,12 @@ var Buscape = require('../utils/BuscapeAPI'),
             map: require('lodash-node/modern/collections/map')
         }
     },
-    buscape;
+    buscape,
+    debug = function (msg) { console.log(msg); };
 
 buscape = new Buscape();
 
 function updateCategories(updateCallback) {
-
     logsData.save('TaxonomyWorker', 'Update Taxonomies Started', function (err) {
         run();
     });
@@ -48,21 +44,31 @@ function updateCategories(updateCallback) {
 
             if (err) {
                 message = 'Update Taxonomies Finished - Errors';
+                debug(err);
             } else {
                 message = 'Update Taxonomies Finished - Success';
             }
 
-            logsData.save('TaxonomyWorker', message, function () {
+            logsData.save('TaxonomyWorker', message, function (err) {
+                debug('where are me');
                 updateCallback(err);
             });
         }
     }
 
     function run() {
+
         var categories,
-            taxonomies;
+            taxonomie,
+            done;
+
+        done = {};
 
         buscape.findCategoryList({categoryId:4029}, function (res) {
+
+            var filtersDataNameList = [
+                'supplier', 'package', 'weight', 'shape', 'volume'
+            ];
 
             function next(model, status) {
                 done[model] = status;
@@ -94,13 +100,9 @@ function updateCategories(updateCallback) {
                     filterValues,
                     stringReplace,
                     categoryFilters,
-                    filtersList,
-                    done;
+                    filtersList;
 
                 data = res.body.category;
-                done = {};
-
-
 
                 if (data) {
 
@@ -184,50 +186,19 @@ function updateCategories(updateCallback) {
                             next('category', true);
                         }
 
-                        // Save the suppliers to the database
-                        if (suppliersData.create(taxonomies.supplier)) {
-                            suppliersData.db.saveAll(function (err) {
-                                next('supplier', err || false);
-                            });
-                        } else {
-                            next('supplier', true);
-                        }
+                        // save the filter list with current gathered data
+                        filtersDataNameList.forEach( function (filterName) {
+                            var tempFilter = filtersData.create(filterName, taxonomies[filterName]);
+                            if (tempFilter.collection.length) {
+                                tempFilter.saveAll(function (err) {
+                                    next(filterName, err || false);
+                                });
+                            } else {
+                                next(filterName, true);
+                            }
+                        });
 
-                        // save the packages to the database
-                        if(packagesData.create(taxonomies.package)) {
-                            packagesData.db.saveAll(function (err) {
-                                next('package', err || false);
-                            });
-                        } else {
-                            next('package', true);
-                        }
 
-                        // save the weights to the database
-                        if (weightsData.create(taxonomies.weight)) {
-                            weightsData.db.saveAll(function (err) {
-                                next('weight', err || false);
-                            });
-                        } else {
-                            next('weight', true);
-                        }
-
-                        // save the shapes to the database
-                        if (shapesData.create(taxonomies.shape)) {
-                            shapesData.db.saveAll(function (err) {
-                                next('shape', err || false);
-                            });
-                        } else {
-                            next('shape', true);
-                        }
-
-                        // save the volumes to the database
-                        if (volumesData.create(taxonomies.volume)) {
-                            volumesData.db.saveAll(function (err) {
-                                next('volume', err || false);
-                            });
-                        } else {
-                            next('volume', true);
-                        }
                     } else {
                         logsData.save('TaxonomyWorker', 'No filters found today, maybe some problem with the BuscapeAPI', function (err) {
                             callCallback(true);

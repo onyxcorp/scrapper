@@ -9,7 +9,7 @@ var Collection = require('collection'),
         },
         objects : {
             isFunction: require('lodash-node/modern/objects/isFunction')
-        }  
+        }
     },
     LogModel,
     LogCollection,
@@ -18,7 +18,7 @@ var Collection = require('collection'),
     debug = function (message) { console.log(message); };
 
 LogModel = Model.extend({
-    
+
     _schema: {
         id: '/Log',
         properties: {
@@ -51,50 +51,54 @@ collection = new LogCollection();
 
 Log = {
     save: function (origin, message, callback) { // origin is the worker we want to update
-        
-        if (!LogCollection.length) {
-            db.getAll(collection, updateData);
+        debug('trying to save ' + message);
+
+        if (!collection.length) {
+            db.getAll(null, function (res) {
+                collection.add(res);
+                handleMessages();
+            });
         } else {
-            updateData();
+            handleMessages();
         }
-        
-        // logs are the same data that will be in collection
-        function updateData(logs) {
+
+        function handleMessages() {
+
             var lastLog,
                 lastLogDay,
                 today,
                 isSameDay;
+
             // the first on the collection is the first data inputed at firebase
             lastLog = collection.first();
-            today = new Date();    
-            
+            today = new Date();
+
             if (lastLog && lastLog.get('id')) {
                 lastLogDay = new Date(parseInt(lastLog.get('id')));
                 isSameDay = (
-                    lastLogDay.getDate() == today.getDate() 
-                    && lastLogDay.getMonth() == today.getMonth()
-                    && lastLogDay.getFullYear() == today.getFullYear()
+                    lastLogDay.getDate() == today.getDate() &&
+                    lastLogDay.getMonth() == today.getMonth() &&
+                    lastLogDay.getFullYear() == today.getFullYear()
                 );
             } else {
                 isSameDay = false;
             }
-            
+
             if (isSameDay) {
                 var attribute,
                     modelRef;
-                    
+
                 // check current attribute data
                 attribute = lastLog.get(origin);
-                
+
                 // if attribute exists we need to add new data to the current worker
                 if (attribute) {
                     attribute.push(message);
                     lastLog.set(origin, attribute);
                 } else { // don't exists, just add a new one
-                    lastLog.set(origin, [message])
+                    lastLog.set(origin, [message]);
                 }
-                modelRef = db.child(lastLog.get('id'));
-                db.save(modelRef, lastLog, callback);
+                db.child(lastLog.get('id')).save(lastLog, callback);
             } else {
                 var newModel,
                     model;
@@ -102,13 +106,15 @@ Log = {
                 newModel = {};
                 newModel[origin] = [message];
                 model = collection.add(newModel);
-                
+
                 if (model && model.isValid()) {
-                    db.createWithKey(today.getTime(), model, callback);
+                    db.child(today.getTime()).save(model, callback);
                 }
             }
         }
+
     },
+
     remove: db.remove
 };
 

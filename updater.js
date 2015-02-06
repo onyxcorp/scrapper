@@ -3,12 +3,12 @@ var Scheduler = require('node-schedule'),
     async = require('async'),
     taxonomyWorker = require('./workers/TaxonomyWorker'),
     productWorker = require('./workers/ProductWorker'),
-    memberWorker = require('./workers/MemberWorker'),
+    // memberWorker = require('./workers/MemberWorker'),
     logsData = require('./data/LogsData'),
     schedule,
     job,
     updater,
-    debug = function (message) { console.log(message) };
+    debug = function (message) { console.log(message); };
 
 schedule = new Scheduler.RecurrenceRule();
 schedule.hour = 02;
@@ -29,9 +29,9 @@ var stopwatch = setInterval(function () {
 updater = function () {
     // utilizar ASYNC waterfall com os dois métodos abaixo
     async.waterfall([
-        //taxonomyWorker,
+        taxonomyWorker,
         productWorker, // first update the product from buscape API
-        memberWorker   // then update the packages information
+        // memberWorker   // then update the packages information
     ], function (err, result) {
         if (err) {
             logsData.save('Updater', 'There was an error with one of the workers today, aborting...', function (err) {

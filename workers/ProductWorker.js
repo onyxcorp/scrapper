@@ -98,7 +98,7 @@ function updateProducts(updateCallback) {
             function findProductList(currentPage, totalPages, productsList, productsPriceHistoryList) {
 
                 currentPage = currentPage || 1;
-                totalPages = 25; // totalPages || null;
+                totalPages = 2; // totalPages || null;
                 productsList = productsList || [];
                 productsPriceHistoryList = productsPriceHistoryList || [];
 
@@ -129,7 +129,7 @@ function updateProducts(updateCallback) {
                     debug('Trying to fetch page ' + currentPage);
                 }
 
-                buscape.findProductList({categoryId:idCategory, page:currentPage, results: 40}, function (res) {
+                buscape.findProductList({categoryId:idCategory, page:currentPage, results: 10}, function (res) {
 
                     if (res instanceof Error) {
                         logsData.save('ProductWorker', 'findProductList error: ' + res.message, function (err) {
@@ -284,14 +284,14 @@ function updateProducts(updateCallback) {
 
 
         // get all categories, a collection will be returned
-        categories.db.getAll( function (categories) {
+        categories.db.getAll(function (categories) {
 
             if (categories.length) {
 
                 queueProducts = async.queue(getProducts, connections.max.getProducts);
 
                 categories.forEach(function (category) {
-
+                    debug(category);
                     // prepare worker product for crawling
                     queueProducts.push(category.get('id_buscape'), function (res) {
                         if (res) {
@@ -456,7 +456,7 @@ function updateProducts(updateCallback) {
                                     } else if (offersLength === 1) {
                                         // there is only one offer, so we have a best_offer but no worst_offer
                                         // TODO must remove seller.id
-                                        list.offers.best_offer = list.offers.offers_by_seller_id;
+                                        list.offers.best_offer = lodash.objects.values(list.offers.offers_by_seller_id)[0];
                                         list.offers.worst_offer = {};
                                         list.offers.best_discount_price = false;
                                         list.offers.best_discount = false;

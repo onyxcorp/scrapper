@@ -7,13 +7,7 @@ var Collection = require('collection'),
     lodash = {
         collections: {
             forEach: require('lodash-node/modern/collections/forEach')
-        },
-        objects : {
-            keys: require('lodash-node/modern/objects/keys'),
-            isArray: require('lodash-node/modern/objects/isArray'),
-            isFunction: require('lodash-node/modern/objects/isFunction'),
-            values: require('lodash-node/modern/objects/values')
-        }  
+        }
     },
     ProductModel,
     ProductCollection,
@@ -22,14 +16,14 @@ var Collection = require('collection'),
     debug = function (message) { console.log(message); };
 
 ProductModel = Model.extend({
-    
+
     _schema: {
         id: '/Product',
         properties: {
             id: { type: 'string' },                 // the key from firebase
             id_buscape: { type: 'integer' },        // id reference from buscape
             categories: { type: 'object' },         // reference to category table
-            offers: { type: 'object' },         
+            offers: { type: 'object' },
             thumb: { type: 'object' },
             title: { type: 'string' },
             slug: { type: 'string' },
@@ -68,17 +62,22 @@ Product = {
     },
     collection: collection,
     db: {   // In a flux architecture everything here would be in the API
-        getAll: function (callback) { db.getAll(collection, callback) },
+        getAll: function (callback) {
+            db.getAll(null, function (data) {
+                collection.add(data);
+                callback(collection);
+            });
+        },
         saveAll: function (callback) {
-            
+
             var queue;
-            
+
             // task receberá as informações de um produto específico
             queue = async.queue(function (task, queueCallback) {
                 Product.db.save(task, queueCallback);
             }, 20);
-            
-            
+
+
             // add all products to the queue
             lodash.collections.forEach(collection.models, function (model) {
                 if (model.isValid()) {
@@ -90,88 +89,46 @@ Product = {
                     });
                 } else {
                     debug('ProductsData.js - Invalid model - ' + model.get('id') || model.get('slug') || model.get('id_buscape'));
-                    debug(model.validationError)
+                    debug(model.validationError);
                 }
             });
-            
+
             // assign the main callback once all saves were done
             queue.drain = callback;
         },
         save: function (model, callback) {
-            
-            var snapshot,
-                modelRef;
-            
-            // check if exists, if exist update otherwise set
-            Product.db.find(model, function (res) {
-                
-                if(!res) {
-                    // there was an error, return true
-                    callback(true);
-                } else {
-                    snapshot = res.val();
-                    if (snapshot) {
-                        var productKeys;
-                        productKeys = lodash.objects.keys(snapshot);
-                        if (productKeys && lodash.objects.isArray(productKeys)) {
-                            modelRef = db.child(productKeys[0]);
-                            db.save(modelRef, model, callback);
-                        } else {
-                            // productKeys was invalid, just go to the next product..
-                            // TODO untested
-                            logsData.save(
-                                'ProductsData', 
-                                'An error ocurred while trying to update the product of id_buscape: ' + model.get('id_buscape'), 
-                                function (err) {
-                                    callback(null);
-                            });
-                        }
-                    } else { // simplesmente adicionar o produto ao banco
-                        modelRef = db.push();
-                        db.create(modelRef, model, callback);
-                    }
-                }
-                
-            });
-        },
-        find: function (model, callback) {
-            
-            var modelRef,
-                modelIdBuscape;
-            
-            // this method need an obrigatory callback
-            if (!callback || !lodash.objects.isFunction(callback)) return;
-            
-            // procurar se o produto existe através da propriedade id_buscape dele
-            modelIdBuscape = model.get('id_buscape');
-            if (modelIdBuscape) {
-                try {
-                    modelRef = db.orderByChild('id_buscape').equalTo(modelIdBuscape);    
-                } catch (err) {
-                    // TODO untested
-                    logsData.save(
-                        'ProductData', 
-                        'Invalid attribute id_buscape: ' + model.get('id_buscape'),
-                        function (err) {
+
+            var identificationAttribute;
+
+            identificationAttribute = model.get('id_buscape');
+
+            if (identificationAttribute) {
+                // check if exists, if exist update otherwise set
+                db.findByChild('id_buscape', identificationAttribute, function (res) {
+                    // atualizar o produto com as novas informações (update?);
+                    if (res instanceof Error) {
+                        logsData.save('ProductsData', 'Firebase error: Invalid identificationAttribute', function (err) {
                             callback(false);
-                        }
-                    );       
-                }
-                modelRef.once('value', callback);
-            } else {
-                // TODO untested
-                logsData.save(
-                    'ProductsData', 
-                    'No model/id_buscape to look for: ' + model.toJSON(),
-                    function (err) {
-                        callback(false);        
+                        });
+                    } else if (!res) {
+                        // there was an error or it was not found, return true
+                        db.push().create(model, callback);
+                    } else if (res) {
+                        // could be model.get('id') but res.key() is safer
+                        // that way we make sure the reference is the same that was checked before
+                        // also we update here only the days field
+                        db.child(res.id).save(model, callback);
                     }
-                );
+                });
+            } else {
+                logsData.save('ProductsData', 'No valid attribute data found', function(err) {
+                    callback(false);
+                });
             }
         },
         remove: db.remove
     }
-    
+
 };
 
 module.exports = Product;
