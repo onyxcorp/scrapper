@@ -42,7 +42,7 @@ Category = {
     db: {
         getAll: function (callback) {
             db.getAll(null, function (data) {
-                collection.add(data);
+                collection.reset(data);
                 callback(collection);
             });
         },

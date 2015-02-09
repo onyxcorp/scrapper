@@ -51,16 +51,14 @@ collection = new LogCollection();
 
 Log = {
     save: function (origin, message, callback) { // origin is the worker we want to update
-        debug('trying to save ' + message);
 
-        if (!collection.length) {
-            db.getAll(null, function (res) {
-                collection.add(res);
-                handleMessages();
-            });
-        } else {
+        // ** WARNING **  ATENÇÃO **
+        // Se tentar optimizar esta parte, lembrar que pode ocorrer um bug aqui
+        // que, quando dentro de um if/else ele duplicará o conteúdo salvo no logs
+        db.getAll(null, function (res) {
+            collection.reset(res);
             handleMessages();
-        }
+        });
 
         function handleMessages() {
 

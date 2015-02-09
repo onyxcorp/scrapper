@@ -50,7 +50,6 @@ function updateCategories(updateCallback) {
             }
 
             logsData.save('TaxonomyWorker', message, function (err) {
-                debug('where are me');
                 updateCallback(err);
             });
         }

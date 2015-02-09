@@ -98,7 +98,7 @@ function updateProducts(updateCallback) {
             function findProductList(currentPage, totalPages, productsList, productsPriceHistoryList) {
 
                 currentPage = currentPage || 1;
-                totalPages = 2; // totalPages || null;
+                totalPages = 1; // totalPages || null;
                 productsList = productsList || [];
                 productsPriceHistoryList = productsPriceHistoryList || [];
 
@@ -116,17 +116,14 @@ function updateProducts(updateCallback) {
                 if (!attempts[currentPage]) {
                     // set error and try to fetch for the first time
                     attempts[currentPage] = 1;
-                    debug('Ammount of attempts: ' + attempts[currentPage] || 1);
-                    debug('Trying to fetch page ' + currentPage);
+                    debug('Ammount of attempts: ' + attempts[currentPage] + '. Trying to fetch page: ' + currentPage);
                 } else if (attempts[currentPage] == 2) {
                     // second run, try again
-                    debug('Ammount of attempts: ' + attempts[currentPage] || 1);
-                    debug('Trying to fetch page ' + currentPage);
+                    debug('Ammount of attempts: ' + attempts[currentPage] + '. Trying to fetch page: ' + currentPage);
                 } else {
                     // tryed two times and no results, time to move on
                     currentPage += 1;
-                    debug('Ammount of attempts: ' + attempts[currentPage] || 1);
-                    debug('Trying to fetch page ' + currentPage);
+                    debug('Ammount of attempts: ' + attempts[currentPage] + '. Trying to fetch page: ' + currentPage);
                 }
 
                 buscape.findProductList({categoryId:idCategory, page:currentPage, results: 10}, function (res) {
@@ -135,7 +132,7 @@ function updateProducts(updateCallback) {
                         logsData.save('ProductWorker', 'findProductList error: ' + res.message, function (err) {
                             debug('we got an error');
                             // going to try a second attempt with the same stats
-                            attempts[currentPage] = attempts[currentPage] + 1;
+                            attempts[currentPage] = attempts[currentPage] ? attempts[currentPage] + 1 : 1;
                             findProductList(currentPage, totalPages, productsList, productsPriceHistoryList);
                         });
                     } else if (res) {
@@ -291,7 +288,6 @@ function updateProducts(updateCallback) {
                 queueProducts = async.queue(getProducts, connections.max.getProducts);
 
                 categories.forEach(function (category) {
-                    debug(category);
                     // prepare worker product for crawling
                     queueProducts.push(category.get('id_buscape'), function (res) {
                         if (res) {
@@ -302,6 +298,7 @@ function updateProducts(updateCallback) {
 
                 // assign a callback when all queues are done
                 queueProducts.drain = function() {
+                    debug(categoryProducts);
                     // categoryProducts should be a list of products
                     callback(null, categoryProducts);
                 };
@@ -336,15 +333,12 @@ function updateProducts(updateCallback) {
                 // if there is no productId yet, means that it is our first attempt
                 if (!offerAttempts[productId]) {
                     offerAttempts[productId] = 1;
-                    debug('Ammount of attempts: ' + offerAttempts[productId]);
-                    debug('Trying to fetch product ' + productId);
+                    debug('Ammount of attempts: ' + offerAttempts[productId] + '. Trying to fetch product: ' + productId);
                 } else if (offerAttempts[productId] === 2 || offerAttempts[productId] === 3) {
                     // we are at the second/third run, try to call getOffers again
-                    debug('Ammount of attempts: ' + offerAttempts[productId]);
-                    debug('Trying to fetch product ' + productId);
+                    debug('Ammount of attempts: ' + offerAttempts[productId] + '. Trying to fetch product: ' + productId);
                 } else {
-                    debug('Ammount of attempts: ' + offerAttempts[productId]);
-                    debug('No more try to fetch product ' + productId);
+                    debug('Ammount of attempts: ' + offerAttempts[productId] + '. No more fetching product: '+ productId);
                     // im tired of this shitty product on this shitty api, next!
                     queueCallback(false);
                     return;

@@ -65,26 +65,31 @@ function updateFiltersMembers(updateCallback) {
         });
     }
 
-    function updateList(data, attributeName, products) {
+    // filterName will be categories/package/suppliers, etc
+    // products are an list of products from the database
+    function updateList(data, filterName, products) {
 
-        var items;
-
-        items = [];
+        var items = [];
 
         // Iterate over each category
         items = data.map(function (item) {
-            var itemData,
+
+            var itemData = null,
                 members = {},
                 productItemAttribute;
 
             // for each category iterate over each product
             products.forEach( function (product, key) {
+
+                debug(product);
                 // get the category attribute from the product
-                productItemAttribute = product.get(attributeName);
-                // if the product.categories attribute has the current package being iterated...
+                productItemAttribute = product.get(filterName);
+
+                // if the product.categories attribute has the current item being iterated...
                 if (productItemAttribute && (productItemAttribute === item || productItemAttribute[item])) {
                     members[product.id] = true;
                 }
+
             });
 
             // assign the members to the item
@@ -92,9 +97,7 @@ function updateFiltersMembers(updateCallback) {
                 itemData = {
                     slug: item,
                     members: members
-                }
-            } else {
-                itemData = null;
+                };
             }
 
             return itemData;
@@ -135,29 +138,31 @@ function updateFiltersMembers(updateCallback) {
                 }
             }
 
-            function abstractUpdateFilters(name, callback) {
+            // filterName will be something like 'package', 'shape'
+            function abstractUpdateFilters(filterName, callback) {
                 var list,
                     filters,
                     filtersModels;
 
-                if (!name) {
+                if (!filterName) {
                     throw new Error('abstract upate filter needs a name');
                 }
 
-                // get all packages from all products and creates a list (array)
-                list = lodash.arrays.uniq(products.pluck(name));
+                // get all packages from all products and creates an unique list (array)
+                list = lodash.arrays.uniq(products.pluck(filterName));
 
-                filters = updateList(list, name, products);
+                //
+                filters = updateList(list, filterName, products);
 
                 if (filters.length) {
-                    var currentFilter = filtersData.create(name, filters);
-                    if(currentFilter.length) {
-                        currentFilter.db.saveAll(callback);
+                    var currentFilter = filtersData.create(filterName, filters);
+                    if(currentFilter.collection.length) {
+                        currentFilter.saveAll(callback);
                     } else {
-                        logError('An error ocurred while updating ' + name + ' members', callback);
+                        logError('An error ocurred while updating ' + filterName + ' members', callback);
                     }
                 } else {
-                    logSuccess('No ' + name + ' to update today', callback);
+                    logSuccess('No ' + filterName + ' to update today', callback);
                 }
             }
 

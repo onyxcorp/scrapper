@@ -3,7 +3,7 @@ var Scheduler = require('node-schedule'),
     async = require('async'),
     taxonomyWorker = require('./workers/TaxonomyWorker'),
     productWorker = require('./workers/ProductWorker'),
-    // memberWorker = require('./workers/MemberWorker'),
+    memberWorker = require('./workers/MemberWorker'),
     logsData = require('./data/LogsData'),
     schedule,
     job,
@@ -31,7 +31,7 @@ updater = function () {
     async.waterfall([
         taxonomyWorker,
         productWorker, // first update the product from buscape API
-        // memberWorker   // then update the packages information
+        memberWorker   // then update the packages information
     ], function (err, result) {
         if (err) {
             logsData.save('Updater', 'There was an error with one of the workers today, aborting...', function (err) {

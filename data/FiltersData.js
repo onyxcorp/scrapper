@@ -19,7 +19,7 @@ var Collection = require('collection'),
 
 FilterModel = Model.extend({
     _schema: {
-        id: '/Supplier',
+        id: '/Filter',
         properties: {
             id: { type: 'string' },     // the firebase key
             id_buscape: { type: 'integer' },
@@ -83,7 +83,10 @@ function Filter(filter, data) {
 }
 
 Filter.prototype.getAll = function (callback) {
-    db.child(this.filterName).getAll(null, callback);
+    db.child(this.filterName).getAll(null, function (data) {
+        this.collection.reset(data);
+        callback(this.collection);
+    }.bind(this));
 };
 
 Filter.prototype.saveAll = function (callback) {
@@ -124,6 +127,7 @@ Filter.prototype.save = function (id, callback) {
     identificationAttribute = model.get('id') || model.get('slug');
 
     if (identificationAttribute) {
+
         // check if exists, if exist update otherwise set
         db.findByKey(model.get('slug'), function (res) {
             // atualizar o produto com as novas informações (update?);

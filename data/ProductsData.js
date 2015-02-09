@@ -64,7 +64,7 @@ Product = {
     db: {   // In a flux architecture everything here would be in the API
         getAll: function (callback) {
             db.getAll(null, function (data) {
-                collection.add(data);
+                collection.reset(data);
                 callback(collection);
             });
         },
