@@ -3,16 +3,8 @@ var Collection = require('collection'),
     async = require('async'),
     db = require('./DB').filters,
     logsData = require('./LogsData'),
-    ShapeModel,
-    SupplierModel,
-    VolumeModel,
-    WeightModel,
-    PackageModel,
-    ShapeCollection,
-    SupplierCollection,
-    VolumeCollection,
-    WeightCollection,
-    PackageCollection,
+    filterModels,
+    filterCollections,
     collections,
     Filter,
     debug = function (message) { console.log(message); };
@@ -30,38 +22,37 @@ FilterModel = Model.extend({
     }
 });
 
-ShapeModel = FilterModel.extend({});
-SupplierModel = FilterModel.extend({});
-VolumeModel = FilterModel.extend({});
-WeightModel = FilterModel.extend({});
-PackageModel = FilterModel.extend({});
-
-ShapeCollection = Collection.extend({
-    model: ShapeModel
-});
-
-SupplierCollection = Collection.extend({
-    model: SupplierModel
-});
-
-VolumeCollection = Collection.extend({
-    model: VolumeModel
-});
-
-WeightCollection = Collection.extend({
-    model: WeightModel
-});
-
-PackageCollection = Collection.extend({
-    model: PackageModel
-});
-
 collections = {};
-collections.shape = new ShapeCollection();
-collections.supplier = new SupplierCollection();
-collections.volume = new VolumeCollection();
-collections.weight = new WeightCollection();
-collections.package = new PackageCollection();
+filterModels = {};
+filterCollections = {};
+
+var filtersList = [
+    'name',
+    'supplier',
+    'package',
+    'weight',
+    'shape',
+    'volume',
+    'concentration',
+    'quantity',
+    'farmaceuticalForm',
+    'holder',
+    'reference',
+    'medicine',
+    'presentation'
+];
+
+function createFilter(filterName) {
+    filterModels[filterName] = FilterModel.extend({});
+    filterCollections[filterName] = Collection.extend({
+        model: filterModels[filterName]
+    });
+    collections[filterName] = new filterCollections[filterName]();
+}
+
+filtersList.forEach(function (value) {
+    createFilter(value);
+});
 
 // constructor filter
 function Filter(filter, data) {
