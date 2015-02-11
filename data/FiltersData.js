@@ -35,7 +35,7 @@ var filtersList = [
     'volume',
     'concentration',
     'quantity',
-    'farmaceuticalForm',
+    'pharmaceuticalForm',
     'holder',
     'reference',
     'medicine',

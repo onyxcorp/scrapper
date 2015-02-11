@@ -170,7 +170,7 @@ function updateCategories(updateCallback) {
                             'volume': 'volume',
                             'concentracao': 'concentration',
                             'quantidade': 'quantity',
-                            'forma-farmaceutica': 'farmaceuticalForm',
+                            'formaFarmaceutica': 'pharmaceuticalForm',
                             'detentor': 'holder',
                             'referencia': 'reference',
                             'medicamento': 'medicine',
@@ -189,8 +189,8 @@ function updateCategories(updateCallback) {
                             lodash.collections.forEach(filtersList, function (filter) {
 
                                 // the filterName is the equivalent of table name in the firebase database
-                                filterName = lodash.string.slugify(filter.name);
-
+                                filterName = lodash.string.camelize(lodash.string.slugify(filter.name), true);
+                                debug(filterName);
                                 if (stringReplace[filterName]) {
 
                                     // iterate over the replacement data and replace it accordingly
@@ -198,7 +198,9 @@ function updateCategories(updateCallback) {
                                         // key are the original value we are going to replace
                                         // from the stringReplace object and
                                         // value are the current wanted value to replace
-                                        filterName = filterName.replace(key, value);
+                                        var pattern = new RegExp(key + '\\b');  // create regex because we want to change whole words only
+                                        debug(pattern);
+                                        filterName = filterName.replace(pattern, value);
                                     });
 
                                     /// get the filter name and set it in the cateogry filters
