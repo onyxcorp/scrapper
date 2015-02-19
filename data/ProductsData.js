@@ -31,11 +31,7 @@ ProductModel = Model.extend({
             tipo: { type: 'string' },
             original_link: { type: 'object' },
             rating: { type: 'object' },
-            package: { type: 'string' },     // reference to package table
-            shape: { type: 'string' },      // reference to the shapes table
-            weight: { type: 'string' },     // reference to the weights table
-            supplier: { type: 'string' },   // reference to supplier table
-            volume: { type: 'string' }     // reference to the volumes table
+            filters: { type: 'object' }
         }
     },
     get: function (attr) {
@@ -60,7 +56,6 @@ Product = {
     create: function (data) {
         return collection.add(data);
     },
-    collection: collection,
     db: {   // In a flux architecture everything here would be in the API
         getAll: function (callback) {
             db.getAll(null, function (data) {
@@ -114,7 +109,7 @@ Product = {
                         // there was an error or it was not found, return true
                         db.push().create(model, callback);
                     } else if (res) {
-                        // could be model.get('id') but res.key() is safer
+                        // could be model.get('id') but res.id is safer
                         // that way we make sure the reference is the same that was checked before
                         // also we update here only the days field
                         db.child(res.id).save(model, callback);

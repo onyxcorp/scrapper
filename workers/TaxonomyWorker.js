@@ -86,7 +86,6 @@ function updateCategories(updateCallback) {
 
             if (err) {
                 message = 'Update Taxonomies Finished - Errors';
-                debug(err);
             } else {
                 message = 'Update Taxonomies Finished - Success';
             }
@@ -107,7 +106,6 @@ function updateCategories(updateCallback) {
 
         // iterate over each category of products (suplementos, etc)
         lodash.collections.forEach(categoriesListId, function (taxonomyId) {
-            debug('scrapping ' + taxonomyId);
             queueTaxonomies.push(taxonomyId, function (err) {
                 if (err) {
                     // there is an error
@@ -135,8 +133,6 @@ function updateCategories(updateCallback) {
         };
 
         function findCategoryList(taxonomyId, findCategoryListCallback) {
-            debug('findCategoryList');
-            debug(taxonomyId);
 
             // TODO maybe this is the correct way of doing this, for now it works because doneState
             // will make sure that all the taxonomies searched for will be ready
@@ -190,7 +186,6 @@ function updateCategories(updateCallback) {
 
                                 // the filterName is the equivalent of table name in the firebase database
                                 filterName = lodash.string.camelize(lodash.string.slugify(filter.name), true);
-                                debug(filterName);
                                 if (stringReplace[filterName]) {
 
                                     // iterate over the replacement data and replace it accordingly
@@ -199,7 +194,6 @@ function updateCategories(updateCallback) {
                                         // from the stringReplace object and
                                         // value are the current wanted value to replace
                                         var pattern = new RegExp(key + '\\b');  // create regex because we want to change whole words only
-                                        debug(pattern);
                                         filterName = filterName.replace(pattern, value);
                                     });
 
