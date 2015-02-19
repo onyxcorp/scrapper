@@ -16,25 +16,18 @@ var Buscape = require('../utils/BuscapeAPI'),
     logsData = require('../data/LogsData'),
     lodash = {
         objects: {
-            assign: require('lodash-node/modern/objects/assign'),
-            defaults: require('lodash-node/modern/objects/defaults'),
             values: require('lodash-node/modern/objects/values'),
             merge: require('lodash-node/modern/objects/merge'),
             isFunction: require('lodash-node/modern/objects/isFunction'),
             forOwn: require('lodash-node/modern/objects/forOwn'),
-            has: require('lodash-node/modern/objects/has'),
             omit: require('lodash-node/modern/objects/omit'),
             transform: require('lodash-node/modern/objects/transform')
         },
-        string: require('underscore.string'),
         collections: {
             min: require('lodash-node/modern/collections/min'),
             max: require('lodash-node/modern/collections/max'),
-            pick: require('lodash-node/modern/objects/pick'),
             pluck: require('lodash-node/modern/collections/pluck'),
-            find: require('lodash-node/modern/collections/find'),
-            forEach: require('lodash-node/modern/collections/forEach'),
-            map: require('lodash-node/modern/collections/map')
+            forEach: require('lodash-node/modern/collections/forEach')
         }
     },
     debug = function (message) { console.log(message); },

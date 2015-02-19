@@ -8,7 +8,6 @@
 
 */
 var Buscape = require('../utils/BuscapeAPI'),
-    Transmuter = require('transmuter'),
     categories = require('../data/CategoriesData'),
     products = require('../data/ProductsData'),
     productsPriceHistory = require('../data/ProductsPriceHistoryData'),
@@ -255,7 +254,7 @@ function updateProducts(updaterCallback) {
                 });
             }
         }
-        
+
         // get all categories, a collection will be returned
         categories.db.getAll(function (categories) {
 
