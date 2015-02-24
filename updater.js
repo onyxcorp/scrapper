@@ -31,8 +31,8 @@ var stopwatch = setInterval(function () {
 updater = function () {
     // utilizar ASYNC waterfall com os dois métodos abaixo
     async.waterfall([
-        taxonomyWorker,
-        productWorker, // first update the product from buscape API
+        // taxonomyWorker,
+        // productWorker, // first update the product from buscape API
         offerWorker
         // reviewWorker,
         // memberWorker   // then update the packages information

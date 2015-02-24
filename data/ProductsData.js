@@ -30,6 +30,7 @@ ProductModel = Model.extend({
             description: { type: 'string' },
             tipo: { type: 'string' },
             original_link: { type: 'object' },
+            external_links: { type: 'object' },
             rating: { type: 'object' },
             filters: { type: 'object' }
         }
@@ -91,12 +92,15 @@ Product = {
             // assign the main callback once all saves were done
             queue.drain = callback;
         },
+        // Save may add new products from buscape or update already existing products
         save: function (model, callback) {
 
             var identificationAttribute;
 
             identificationAttribute = model.get('id_buscape');
 
+            // This first case scenario is from when the product is being added
+            // from the buscape api
             if (identificationAttribute) {
                 // check if exists, if exist update otherwise set
                 db.findByChild('id_buscape', identificationAttribute, function (res) {
@@ -106,7 +110,7 @@ Product = {
                             callback(false);
                         });
                     } else if (!res) {
-                        // there was an error or it was not found, return true
+                        // the product was not found by it's id_buscape, add it
                         db.push().create(model, callback);
                     } else if (res) {
                         // could be model.get('id') but res.id is safer
@@ -116,9 +120,22 @@ Product = {
                     }
                 });
             } else {
-                logsData.save('ProductsData', 'No valid attribute data found', function(err) {
-                    callback(false);
-                });
+                // There are no id_buscape, it means the product were directly
+                // added to the database and have no correlation with buscape
+
+                // if there is an id, let's just update it, we should not
+                identificationAttribute = model.get('id');
+                if (identificationAttribute) {
+
+                    db.child(identificationAttribute).save(model, callback);
+
+                } else {
+                    // if there is no id and the product is not from buscape
+                    // if means that we should leave and not create a new product
+                    logsData.save('ProductsData', 'No valid attribute data found', function(err) {
+                        callback(false);
+                    });
+                }
             }
         },
         remove: db.remove

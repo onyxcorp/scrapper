@@ -30,6 +30,12 @@ var Buscape = require('../utils/BuscapeAPI'),
             forEach: require('lodash-node/modern/collections/forEach')
         }
     },
+    buscapeScrapper = require('../scrappers/BuscapeScrapper'),
+    netfarmaScrapper = require('../scrappers/NetfarmaScrapper'),
+    ultrafarmaScrapper = require('../scrappers/UltrafarmaScrapper'),
+    farmacondeScrapper = require('../scrappers/FarmacondeScrapper'),
+    Done = require('../utils/DoneState'),
+    doneStateManager,
     debug = function (message) { console.log(message); },
     buscape,
     crawler,
@@ -45,7 +51,8 @@ connections = {
 
 // Run all constructors
 buscape = new Buscape();
-crawler = new Crawler({maxConnections:connections.max.crawler});
+
+doneStateManager = new Done();
 
 function updateProductsOffers(updaterCallback) {
 
@@ -253,85 +260,115 @@ function updateProductsOffers(updaterCallback) {
         // Retrive product extra data information from product page
         function scrapeProductPage(product, queueCallback) {
 
-            var crawlerLink,
-                stringReplace,
+            var list,
+                crawlerLink,
                 requiredData,
+                externalLinks,
                 productId;
 
-            crawlerLink =  product.get('original_link').url;
-            productId = product.get('id_buscape');
+            buscapeCrawlerLink =  product.get('original_link');
+            buscapeProductId = product.get('id_buscape');
+            externalLinks = product.get('external_links');
+            list = {};
 
-            stringReplace = {
-                'apresentacao': 'presentation',
-                'concentracao': 'concentration',
-                'substancia-ativa': 'medicine',
-                'nome': 'name',
-                'quantidade': 'quantity',
-                'marca' : 'supplier',
-                'embalagem' : 'package',
-                'forma': 'shape',
-                'volume': 'volume',
-                'peso' : 'weight'
-            };
+            crawler = new Crawler({
+                maxConnections: connections.max.crawler
+            });
+
+            function drainDone() {
+                if(doneStateManager.getDoneState()) {
+                    debug('all done');
+                    debug(list);
+                    if (Object.keys(list).length) {
+                        queueCallback(list);
+                    } else {
+                        logsData.save('OfferWorker', 'No data found while looking for scraped data for ' + product.get('title'), function (err) {
+                           queueCallback(list);
+                        });
+                    }
+                } else {
+                    debug('not done yet');
+                }
+            }
 
             // if there is a valid productid, crawler link and valid url we can start scraping
-            if(productId && crawlerLink && validUrl.isUri(crawlerLink)) {
+            if(buscapeProductId && buscapeCrawlerLink && validUrl.isUri(buscapeCrawlerLink.url)) {
 
-                // Get product link and scrap the page
+                // Scrapping Buscape Extra Data Page
+                doneStateManager.startDoneState('scrapeBuscape');
                 crawler.queue([{
-                    uri: crawlerLink, // the product page link
+                    uri: buscapeCrawlerLink.url,   // the product page link
+                    userAgent: 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36',
                     callback: function (error, result, $) {
 
-                        var detalhes,
-                            list,
-                            data,
-                            i;
-
-                        detalhes = [];
-                        list = {};
-                        data = $('section.product-details').find('li').children('span');
-
-                        if (data.length) {
-                           // cheerio built in each loop function
-                            data.each( function (index, element) {
-                                var text;
-                                // remove all extra white spaces and slugify the result
-                                text = lodash.string.slugify(lodash.string.clean($(this).text()));
-                                // iterate over the replacement data and replace it accordingly
-                                lodash.objects.forOwn(stringReplace, function (value, key) {
-                                    // key are the original value we are going to replace
-                                    // value are the current wanted value to replace
-                                    text = text.replace(key, value);
-                                });
-                                detalhes.push(text);
+                        if (error || !result) {
+                            logsData.save('OfferWorker', 'Invalid URL provided for scrapping for product ' + product.get('title'), function (err) {
+                               doneStateManager.finishDoneState('scrapeBuscape', false);
+                               drainDone();
                             });
-                            // loop throught all the found product details
-                            for (i = 0; i < detalhes.length; i += 2) {
-                                var productInfoData,
-                                    key,
-                                    value;
 
-                                key = detalhes[i];      // all even array indexes (0,2,4,...)
-                                value = detalhes[i+1];  // all odd array indexes (1,3,5,...)
-
-                                // if the current key exists as a required (and wanted) data
-                                productInfoData = {};
-                                productInfoData[key] = value ? value : '';
-                                lodash.objects.merge(list, productInfoData);
-                            }
-
-                            queueCallback(list);
                         } else {
-                            logsData.save('OfferWorker', 'No data found while looking for section.product-details for ' + product.get('title'), function (err) {
-                               queueCallback(list);
-                            });
+                            lodash.objects.merge(list, buscapeScrapper(error, result, $));
+                            doneStateManager.finishDoneState('scrapeBuscape', false);
+                            drainDone();
                         }
                     }
                 }]);
+
+            }
+
+            if (externalLinks) {
+
+                debug('We have externalLinks for ' + product.get('title'));
+
+                var names = Object.keys(externalLinks);
+                if (names.length) {
+
+                    names.forEach(function (name) {
+                        // start all done states references, since the loop wil run faster
+                        // then the callbacks will be called, it will not cause a bug
+                        // of returning earlier than all done's were set
+                        doneStateManager.startDoneState(externalLinks[name]);
+                        crawler.queue([{
+                            uri: externalLinks[name],
+                            userAgent: 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36',
+                            callback: function (error, result, $) {
+
+                                if (error || !result) {
+                                    debug('an error has ocurred');
+                                } else {
+
+                                    var list;
+
+                                    debug('current name to fetch from is ' + name);
+
+                                    switch (name) {
+                                        case 'ultrafarma':
+                                            lodash.objects.merge(list, ultrafarmaScrapper(error, result, $));
+                                            break;
+                                        case 'farmaconde':
+                                            lodash.objects.merge(list, farmacondeScrapper(error, result, $));
+                                            break;
+                                        case 'netfarma':
+                                            list = netfarmaScrapper(error, result, $);
+                                            break;
+                                        default:
+                                            // do nothing
+                                            break;
+                                    }
+                                }
+                                doneStateManager.finishDoneState(externalLinks[name], true);
+                                drainDone();
+                            }
+                        }]);
+                    });
+                } else {
+                    // no external links
+                    // TODO what to do? Nothing i guess
+                }
             } else {
-                logsData.save('OfferWorker', 'Product link/buscape_id not provided or invalid for ' + product.get('title'), function (err) {
-                    queueCallback(false);
-                });
+                // external links returned undefined
+                // TODO what to do? Nothing i ugess
             }
         }
 
@@ -382,13 +419,11 @@ function updateProductsOffers(updaterCallback) {
 
                 // assign a callback when all queues are done
                 queueScrape.drain = function() {
-                    debug('scrap drain');
                     queueScrapeDone = true;
                     next();
                 };
 
                 queueOffer.drain = function () {
-                    debug('offer drain');
                     queueOfferDone = true;
                     next();
                 };
@@ -401,15 +436,6 @@ function updateProductsOffers(updaterCallback) {
                 });
             }
         });
-        //
-        //
-        // if (categoryProducts && Object.keys(categoryProducts).length) {
-        //
-        //
-        //
-        // } else {
-        //
-        // }
     }
 }
 
