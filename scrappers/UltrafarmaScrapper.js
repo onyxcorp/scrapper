@@ -55,9 +55,9 @@ function UltrafarmaScrapper(error, result, $) {
     normalPrice = $('div.div_economize').find('del').text();
     currentPrice = $('div.div_preco_detalhe').text();
 
-    productData.title = lodash.string(title.toLowerCase()).trim().capitalize().value();
-    productData.conteudoDosagemTotal = lodash.string(conteudoDosagemTotal.toLowerCase()).trim().capitalize().value();
-    productData.principioAtivo = lodash.string(principioAtivo.toLowerCase()).trim().capitalize().value();
+    productData.title = title ? lodash.string(title.toLowerCase()).trim().capitalize().value() : '';
+    productData.conteudoDosagemTotal = conteudoDosagemTotal ? lodash.string(conteudoDosagemTotal.toLowerCase()).trim().capitalize().value() : '';
+    productData.principioAtivo = principioAtivo ? lodash.string(principioAtivo.toLowerCase()).trim().capitalize().value() : '';
     productData.productCode = productCode ? helpers.numbersOnly(productCode) : 0;
     productData.price.old = normalPrice ? helpers.priceNumbersOnly(normalPrice) : 0.00;
     productData.price.value = currentPrice ? helpers.priceNumbersOnly(currentPrice) : 0.00;

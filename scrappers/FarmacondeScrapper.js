@@ -50,7 +50,7 @@ function FarmacondeScrapper(error, result, $) {
 
     productData.title = title ? lodash.string(title.toLowerCase()).trim().capitalize().value() : '';
     productData.conteudoDosagemTotal = conteudoDosagemTotal ? lodash.string(conteudoDosagemTotal.toLowerCase()).trim().capitalize().value() : '';
-    productData.principioAtivo = principioAtivo; // this info is not avaialble...
+    productData.principioAtivo = principioAtivo ? principioAtivo : '';
     productData.productCode = productCode ? helpers.numbersOnly(productCode) : 0;
     productData.price.old = normalPrice ? helpers.priceNumbersOnly(normalPrice) : 0.00;
     productData.price.value = currentPrice ? helpers.priceNumbersOnly(currentPrice) : 0.00;

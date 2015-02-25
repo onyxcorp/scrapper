@@ -19,21 +19,21 @@ var Buscape = require('../utils/BuscapeAPI'),
             values: require('lodash-node/modern/objects/values'),
             merge: require('lodash-node/modern/objects/merge'),
             isFunction: require('lodash-node/modern/objects/isFunction'),
-            forOwn: require('lodash-node/modern/objects/forOwn'),
-            omit: require('lodash-node/modern/objects/omit'),
-            transform: require('lodash-node/modern/objects/transform')
+            forOwn: require('lodash-node/modern/objects/forOwn')
         },
         collections: {
             min: require('lodash-node/modern/collections/min'),
             max: require('lodash-node/modern/collections/max'),
-            pluck: require('lodash-node/modern/collections/pluck'),
             forEach: require('lodash-node/modern/collections/forEach')
         }
     },
-    buscapeScrapper = require('../scrappers/BuscapeScrapper'),
-    netfarmaScrapper = require('../scrappers/NetfarmaScrapper'),
-    ultrafarmaScrapper = require('../scrappers/UltrafarmaScrapper'),
-    farmacondeScrapper = require('../scrappers/FarmacondeScrapper'),
+    scrappers = {
+        buscapeOffer: require('../scrappers/BuscapeOfferScrapper'),
+        buscape: require('../scrappers/BuscapeScrapper'),
+        netfarma: require('../scrappers/NetfarmaScrapper'),
+        ultrafarma: require('../scrappers/UltrafarmaScrapper'),
+        farmaconde: require('../scrappers/FarmacondeScrapper'),
+    },
     Done = require('../utils/DoneState'),
     doneStateManager,
     debug = function (message) { console.log(message); },
@@ -95,6 +95,7 @@ function updateProductsOffers(updaterCallback) {
 
             var productId,
                 externalLinks,
+                externalLinksList,
                 doneStateManager,
                 list;
 
@@ -102,22 +103,41 @@ function updateProductsOffers(updaterCallback) {
             productId = product.get('id_buscape');
             // shortcut to buscape id present at the model
             externalLinks = product.get('external_links');
+            if (externalLinks) {
+                externalLinksList = Object.keys(externalLinks);
+            }
 
             list = {
                 offers: {
-                    offers_by_seller: {}
+                    offers_by_seller: {},
+                    best_offer: {},
+                    worst_offer: {},
+                    best_discount: {},
+                    best_discount_price: {}
                 }
             };
 
             doneStateManager = new Done();
 
-            function drainDone() {
+            function startDrain(name) {
+                doneStateManager.startDoneState(name);
+            }
 
-                if (doneStateManager.getDoneState()) {
+            function drainDone(name) {
+
+                name = name || null;
+
+                if (name) {
+                    doneStateManager.finishDoneState(name, true);
+                }
+
+                // if doneState is finished or was never defined...
+                if (doneStateManager.getDoneState() || doneStateManager.getDoneState() === null) {
 
                     debug('drainDone is done, continue...');
 
                     if (Object.keys(list).length) {
+
                         var offersLength = Object.keys(list.offers.offers_by_seller).length;
 
                         // get the current best offer by comparing all the prices
@@ -149,7 +169,6 @@ function updateProductsOffers(updaterCallback) {
                             list.offers.best_discount = false;
                         }
 
-                        debug(list);
                         queueCallback(list);
 
                     } else {
@@ -160,6 +179,11 @@ function updateProductsOffers(updaterCallback) {
                 } else {
                     debug('drainDone not done yet...');
                 }
+            }
+
+            // if there are no externalLinks, externalLinksList or buscapeId just return the empty offer list
+            if (!productId && (!externalLinks || !externalLinksList.length)) {
+                drainDone();
             }
 
             if (productId) {
@@ -174,15 +198,14 @@ function updateProductsOffers(updaterCallback) {
                 } else {
                     debug('Ammount of attempts: ' + offerAttempts[productId] + '. No more fetching product: '+ productId);
                     // im tired of this shitty product on this shitty api, next!
-                    doneStateManager.finishDoneState('buscape');
-                    drainDone();
+                    drainDone('buscape');
                     return;
                 }
 
                 // simple call the api with some parameters, fetching the product information
                 // and it's offers
                 // Scrapping Buscape Extra Data Page
-                doneStateManager.startDoneState('buscape');
+                startDrain('buscape');
                 buscape.findOfferList({productId: productId}, function (res) {
                     if (res instanceof Error) {
                         offerAttempts[productId] = offerAttempts[productId] + 1;
@@ -196,146 +219,51 @@ function updateProductsOffers(updaterCallback) {
 
                             // there is offers for this product?
                             if (res.body.offer) {
-                                var pluckedOffers,
-                                    bestOffer,
-                                    worstOffer,
-                                    bestDiscount,
-                                    toRemove;
-
-                                // this is the field name set in the model that hold sellers informations
-                                list.offers.offers_by_seller = {};
-                                list.offers.best_offer = {};
-                                list.offers.worst_offer = {};
-                                list.offers.best_discount = {};
-                                list.offers.best_discount_price = {};
-
-                                /**
-                                 *  SET offers_by_seller_id
-                                 */
-
-                                // we are removing all the unecessary data the API returns
-                                // and using only the offer field and childrens
-                                pluckedOffers = lodash.collections.pluck(res.body.offer, 'offer');
-
-                                if (pluckedOffers.length) {
-                                    // data that we dont want to save from the selller
-                                    toRemove = [
-                                        'oneclickbuy', 'oneclickbuyvalue', 'advertiserid',
-                                        'cpcdifferentiated', 'contacts', 'istrustedstore',
-                                        'pagamentodigital', 'extra'
-                                    ];
-
-                                    // now just iterate over each offer and add it to the model field
-                                    // it will all be ready for saving
-                                    lodash.collections.forEach(pluckedOffers, function (offer, key) {
-
-                                        var offerId = offer.seller.id;
-
-                                        // set the current offer as an empty object
-                                        list.offers.offers_by_seller[offerId] = {};
-
-                                        // filter data that we don't want (remove)
-                                        list.offers.offers_by_seller[offerId].seller = lodash.objects.omit(offer.seller, function (value, key) {
-                                            return toRemove.indexOf(key) !== -1;
-                                        });
-
-                                        // pluck the link property
-                                        list.offers.offers_by_seller[offerId].seller.links = lodash.collections.pluck(offer.seller.links, 'link');
-
-                                        // fix price type (string to integer)
-                                        // result is the object, key is the property and value is the current value of it
-                                        list.offers.offers_by_seller[offerId].price = lodash.objects.transform(offer.price, function (result, value, key) {
-                                            // keys => parcel, currency, value
-                                            if (key === 'parcel' && Object.keys(value).length) {
-                                                // yep, weird shit, but it works
-                                                value.value = parseFloat(value.value) || value.value;
-                                                result[key] = value;
-                                            } else if (key === 'value' && value) {
-                                                result[key] = parseFloat(value) || value;
-                                            } else {
-                                                result[key] = value;
-                                            }
-                                        });
-
-                                        list.offers.offers_by_seller[offerId].links = lodash.collections.pluck(offer.links, 'link');
-                                        // removed uneeded data
-                                        delete list.offers.offers_by_seller[offerId].seller.id;
-                                    });
-                                }
-                                doneStateManager.finishDoneState('buscape', true);
-                                drainDone();
-                            } else {
-                                // No offers for this product, do nothing
-                                doneStateManager.finishDoneState('buscape', true);
-                                drainDone();
+                                lodash.objects.merge(list.offers, scrappers.buscapeOffer(res.body.offer));
                             }
+
+                            drainDone('buscape');
+
                         } else {
                             logsData.save('OfferWorker', 'No response from the api', function (err) {
-                                doneStateManager.finishDoneState('buscape', true);
-                                drainDone();
+                                drainDone('buscape');
                             });
                         }
                     } else {
                         logsData.save('OfferWorker', 'Problems with BuscapeAPI request on findProductsExtraData', function (err) {
-                            doneStateManager.finishDoneState('buscape', true);
                             drainDone();
                         });
                     }
                 });
             }
 
-            if (externalLinks) {
+            if (externalLinks && externalLinksList.length) {
+                externalLinksList.forEach(function (link) {
+                    // start all done states references, since the loop wil run faster
+                    // then the callbacks will be called, it will not cause a bug
+                    // of returning earlier than all done's were set
+                    doneStateManager.startDoneState(externalLinks[link]);
+                    crawler.queue([{
+                        uri: externalLinks[link],
+                        userAgent: 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36',
+                        callback: function (error, result, $) {
 
-                var names = Object.keys(externalLinks);
-                if (names.length) {
+                            if (error || !result) {
+                                debug('an error has ocurred');
+                            } else {
 
-                    names.forEach(function (name) {
-                        // start all done states references, since the loop wil run faster
-                        // then the callbacks will be called, it will not cause a bug
-                        // of returning earlier than all done's were set
-                        doneStateManager.startDoneState(externalLinks[name]);
-                        crawler.queue([{
-                            uri: externalLinks[name],
-                            userAgent: 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36',
-                            callback: function (error, result, $) {
-
-                                if (error || !result) {
-                                    debug('an error has ocurred');
-                                } else {
-                                    switch (name) {
-                                        case 'ultrafarma':
-                                            list.offers.offers_by_seller.ultrafarma = ultrafarmaScrapper(error, result, $);
-                                            break;
-                                        case 'farmaconde':
-                                            // TODO remove this
-                                            // TODO remove from here, farmaconde should be used in other place to set the product data (a temporary thing)
-                                            // TODO meh
-                                            list.offers.offers_by_seller.farmaconde = farmacondeScrapper(error, result, $);
-                                            break;
-                                        case 'netfarma':
-                                            list.offers.offers_by_seller.netfarma = netfarmaScrapper(error, result, $);
-                                            break;
-                                        default:
-                                            // do nothing
-                                            break;
-                                    }
+                                if (!scrappers[link] || typeof scrappers[link] !== 'function') {
+                                    throw new Error('Invalid scrapper link or it is not a function: ' + link);
                                 }
 
-                                doneStateManager.finishDoneState(externalLinks[name], true);
-                                drainDone();
+                                list.offers.offers_by_seller[link] = scrappers[link](error, result, $);
                             }
-                        }]);
-                    });
-                } else {
-                    // no external links
-                    drainDone();
-                }
-            } else {
-                // external links returned undefined
-                drainDone();
+                            drainDone(externalLinks[link]);
+                        }
+                    }]);
+                });
             }
         }
-
 
         // Retrive product extra data information from product page
         function extraProductInformation(product, queueCallback) {
@@ -362,7 +290,7 @@ function updateProductsOffers(updaterCallback) {
                                queueCallback(list);
                             });
                         } else {
-                            list = buscapeScrapper(error, result, $);
+                            list = scrappers.buscape(error, result, $);
                             queueCallback(list);
                         }
                     }
