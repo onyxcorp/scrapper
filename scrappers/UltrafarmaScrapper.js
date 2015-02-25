@@ -31,7 +31,12 @@ function UltrafarmaScrapper(error, result, $) {
         normalPrice,
         currentPrice;
 
-    productData = {};
+    productData = {
+        price: {
+            old: 0,
+            value: 0
+        }
+    };
 
     productInfo = $('div.desc_produtos');
     receitaInfo = $('div.div_informacoes_receita');
@@ -40,7 +45,6 @@ function UltrafarmaScrapper(error, result, $) {
     // productInfo
     title = productInfo.find('div.div_nome_produto').text();
     conteudoDosagemTotal = productInfo.find('div.div_nome_produto').text();
-    debug(title);
 
     // receitaInfo
     var extraInfo = receitaInfo.find('div.ajuste_link_ajuda');
@@ -55,12 +59,10 @@ function UltrafarmaScrapper(error, result, $) {
     productData.conteudoDosagemTotal = lodash.string(conteudoDosagemTotal.toLowerCase()).trim().capitalize().value();
     productData.principioAtivo = lodash.string(principioAtivo.toLowerCase()).trim().capitalize().value();
     productData.productCode = productCode ? helpers.numbersOnly(productCode) : 0;
-    productData.normalPrice = normalPrice ? helpers.priceNumbersOnly(normalPrice) : 0.00;
-    productData.currentPrice = currentPrice ? helpers.priceNumbersOnly(currentPrice) : 0.00;
+    productData.price.old = normalPrice ? helpers.priceNumbersOnly(normalPrice) : 0.00;
+    productData.price.value = currentPrice ? helpers.priceNumbersOnly(currentPrice) : 0.00;
 
     // return all collected and formatted data
-    debug('scrapped from Ultrafarma');
-    debug(productData);
     return productData;
 }
 

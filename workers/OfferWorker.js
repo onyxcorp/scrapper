@@ -44,15 +44,13 @@ var Buscape = require('../utils/BuscapeAPI'),
 connections = {
     max: {
         crawler: 40,
-        scrapeProductPage: 40,
+        extraProductInformation: 40,
         getOffers: 40
     }
 };
 
 // Run all constructors
 buscape = new Buscape();
-
-doneStateManager = new Done();
 
 function updateProductsOffers(updaterCallback) {
 
@@ -79,20 +77,90 @@ function updateProductsOffers(updaterCallback) {
     }
 
     function findProductsExtraData(callback) {
-        debug('findProducsExtraData');
+
         var queueScrapeDone,
             queueOfferDone,
             offerAttempts;
 
         offerAttempts = {};
 
+        // crawler will be used by both scrapper and getOffers functions
+        crawler = new Crawler({
+            maxConnections: connections.max.crawler
+        });
+
+
         // Retrive some product offer information
         function getOffers(product, queueCallback) {
 
-            var productId;
+            var productId,
+                externalLinks,
+                doneStateManager,
+                list;
 
             // shortcut to buscape id present at the model
             productId = product.get('id_buscape');
+            // shortcut to buscape id present at the model
+            externalLinks = product.get('external_links');
+
+            list = {
+                offers: {
+                    offers_by_seller: {}
+                }
+            };
+
+            doneStateManager = new Done();
+
+            function drainDone() {
+
+                if (doneStateManager.getDoneState()) {
+
+                    debug('drainDone is done, continue...');
+
+                    if (Object.keys(list).length) {
+                        var offersLength = Object.keys(list.offers.offers_by_seller).length;
+
+                        // get the current best offer by comparing all the prices
+                        if (offersLength > 1) {
+                            // there are more than one offer
+                            list.offers.best_offer = lodash.collections.min(list.offers.offers_by_seller, function (offer) {
+                                return Transmuter.toFloat(offer.price.value);
+                            });
+                            list.offers.worst_offer = lodash.collections.max(list.offers.offers_by_seller, function (offer) {
+                                return Transmuter.toFloat(offer.price.value);
+                            });
+
+                            // calculate best_discount prices
+                            list.offers.best_discount_price = list.offers.worst_offer.price.value - list.offers.best_offer.price.value;
+                            var tempDiscount = 1 - list.offers.best_offer.price.value / list.offers.worst_offer.price.value;
+                            list.offers.best_discount = parseFloat(tempDiscount.toFixed(3));
+                        } else if (offersLength === 1) {
+                            // there is only one offer, so we have a best_offer but no worst_offer
+                            // TODO must remove seller.id
+                            list.offers.best_offer = lodash.objects.values(list.offers.offers_by_seller)[0];
+                            list.offers.worst_offer = {};
+                            list.offers.best_discount_price = false;
+                            list.offers.best_discount = false;
+                        } else {
+                            // there are no offers
+                            list.offers.best_offer = false;
+                            list.offers.worst_offer = false;
+                            list.offers.best_discount_price = false;
+                            list.offers.best_discount = false;
+                        }
+
+                        debug(list);
+                        queueCallback(list);
+
+                    } else {
+                        logsData.save('OfferWorker', 'No data found while looking for scraped data for ' + product.get('title'), function (err) {
+                           queueCallback(list);
+                        });
+                    }
+                } else {
+                    debug('drainDone not done yet...');
+                }
+            }
 
             if (productId) {
 
@@ -106,12 +174,15 @@ function updateProductsOffers(updaterCallback) {
                 } else {
                     debug('Ammount of attempts: ' + offerAttempts[productId] + '. No more fetching product: '+ productId);
                     // im tired of this shitty product on this shitty api, next!
-                    queueCallback(false);
+                    doneStateManager.finishDoneState('buscape');
+                    drainDone();
                     return;
                 }
 
                 // simple call the api with some parameters, fetching the product information
                 // and it's offers
+                // Scrapping Buscape Extra Data Page
+                doneStateManager.startDoneState('buscape');
                 buscape.findOfferList({productId: productId}, function (res) {
                     if (res instanceof Error) {
                         offerAttempts[productId] = offerAttempts[productId] + 1;
@@ -120,8 +191,6 @@ function updateProductsOffers(updaterCallback) {
                             getOffers(product, queueCallback);
                         });
                     } else if (res) {
-                        var list;
-                        list = {};
 
                         if (res.ok) { // Response ok
 
@@ -134,8 +203,7 @@ function updateProductsOffers(updaterCallback) {
                                     toRemove;
 
                                 // this is the field name set in the model that hold sellers informations
-                                list.offers = {};
-                                list.offers.offers_by_seller_id = {};
+                                list.offers.offers_by_seller = {};
                                 list.offers.best_offer = {};
                                 list.offers.worst_offer = {};
                                 list.offers.best_discount = {};
@@ -164,19 +232,19 @@ function updateProductsOffers(updaterCallback) {
                                         var offerId = offer.seller.id;
 
                                         // set the current offer as an empty object
-                                        list.offers.offers_by_seller_id[offerId] = {};
+                                        list.offers.offers_by_seller[offerId] = {};
 
                                         // filter data that we don't want (remove)
-                                        list.offers.offers_by_seller_id[offerId].seller = lodash.objects.omit(offer.seller, function (value, key) {
+                                        list.offers.offers_by_seller[offerId].seller = lodash.objects.omit(offer.seller, function (value, key) {
                                             return toRemove.indexOf(key) !== -1;
                                         });
 
                                         // pluck the link property
-                                        list.offers.offers_by_seller_id[offerId].seller.links = lodash.collections.pluck(offer.seller.links, 'link');
+                                        list.offers.offers_by_seller[offerId].seller.links = lodash.collections.pluck(offer.seller.links, 'link');
 
                                         // fix price type (string to integer)
                                         // result is the object, key is the property and value is the current value of it
-                                        list.offers.offers_by_seller_id[offerId].price = lodash.objects.transform(offer.price, function (result, value, key) {
+                                        list.offers.offers_by_seller[offerId].price = lodash.objects.transform(offer.price, function (result, value, key) {
                                             // keys => parcel, currency, value
                                             if (key === 'parcel' && Object.keys(value).length) {
                                                 // yep, weird shit, but it works
@@ -189,137 +257,34 @@ function updateProductsOffers(updaterCallback) {
                                             }
                                         });
 
-                                        list.offers.offers_by_seller_id[offerId].links = lodash.collections.pluck(offer.links, 'link');
+                                        list.offers.offers_by_seller[offerId].links = lodash.collections.pluck(offer.links, 'link');
                                         // removed uneeded data
-                                        delete list.offers.offers_by_seller_id[offerId].seller.id;
+                                        delete list.offers.offers_by_seller[offerId].seller.id;
                                     });
-
-                                    /**
-                                     * SET best_offer and worst_offer
-                                     * TODO functional programming this shit
-                                     */
-                                     var offersLength = Object.keys(list.offers.offers_by_seller_id).length;
-
-                                    // get the current best offer by comparing all the prices
-                                    if (offersLength > 1) {
-                                        // there are more than one offer
-                                        list.offers.best_offer = lodash.collections.min(list.offers.offers_by_seller_id, function (offer) {
-                                            return Transmuter.toFloat(offer.price.value);
-                                        });
-                                        list.offers.worst_offer = lodash.collections.max(list.offers.offers_by_seller_id, function (offer) {
-                                            return Transmuter.toFloat(offer.price.value);
-                                        });
-
-                                        // calculate best_discount prices
-                                        list.offers.best_discount_price = list.offers.worst_offer.price.value - list.offers.best_offer.price.value;
-                                        var tempDiscount = 1 - list.offers.best_offer.price.value / list.offers.worst_offer.price.value;
-                                        list.offers.best_discount = parseFloat(tempDiscount.toFixed(3));
-                                    } else if (offersLength === 1) {
-                                        // there is only one offer, so we have a best_offer but no worst_offer
-                                        // TODO must remove seller.id
-                                        list.offers.best_offer = lodash.objects.values(list.offers.offers_by_seller_id)[0];
-                                        list.offers.worst_offer = {};
-                                        list.offers.best_discount_price = false;
-                                        list.offers.best_discount = false;
-                                    } else {
-                                        // there are no offers
-                                        list.offers.best_offer = false;
-                                        list.offers.worst_offer = false;
-                                        list.offers.best_discount_price = false;
-                                        list.offers.best_discount = false;
-                                    }
-
-                                    queueCallback(list);
-
-                                } else {
-                                    queueCallback(false);
                                 }
-
+                                doneStateManager.finishDoneState('buscape', true);
+                                drainDone();
                             } else {
                                 // No offers for this product, do nothing
-                                queueCallback(false); // list is initially set as {}
+                                doneStateManager.finishDoneState('buscape', true);
+                                drainDone();
                             }
                         } else {
                             logsData.save('OfferWorker', 'No response from the api', function (err) {
-                                queueCallback(false);
+                                doneStateManager.finishDoneState('buscape', true);
+                                drainDone();
                             });
                         }
                     } else {
                         logsData.save('OfferWorker', 'Problems with BuscapeAPI request on findProductsExtraData', function (err) {
-                            queueCallback(false);
-                        });
-                    }
-                });
-            } else {
-                logsData.save('OfferWorker', 'Product link/buscape_id not provided or invalid for ' + product.get('title'), function (err) {
-                    queueCallback(false);
-                });
-            }
-        }
-
-        // Retrive product extra data information from product page
-        function scrapeProductPage(product, queueCallback) {
-
-            var list,
-                crawlerLink,
-                requiredData,
-                externalLinks,
-                productId;
-
-            buscapeCrawlerLink =  product.get('original_link');
-            buscapeProductId = product.get('id_buscape');
-            externalLinks = product.get('external_links');
-            list = {};
-
-            crawler = new Crawler({
-                maxConnections: connections.max.crawler
-            });
-
-            function drainDone() {
-                if(doneStateManager.getDoneState()) {
-                    debug('all done');
-                    debug(list);
-                    if (Object.keys(list).length) {
-                        queueCallback(list);
-                    } else {
-                        logsData.save('OfferWorker', 'No data found while looking for scraped data for ' + product.get('title'), function (err) {
-                           queueCallback(list);
-                        });
-                    }
-                } else {
-                    debug('not done yet');
-                }
-            }
-
-            // if there is a valid productid, crawler link and valid url we can start scraping
-            if(buscapeProductId && buscapeCrawlerLink && validUrl.isUri(buscapeCrawlerLink.url)) {
-
-                // Scrapping Buscape Extra Data Page
-                doneStateManager.startDoneState('scrapeBuscape');
-                crawler.queue([{
-                    uri: buscapeCrawlerLink.url,   // the product page link
-                    userAgent: 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36',
-                    callback: function (error, result, $) {
-
-                        if (error || !result) {
-                            logsData.save('OfferWorker', 'Invalid URL provided for scrapping for product ' + product.get('title'), function (err) {
-                               doneStateManager.finishDoneState('scrapeBuscape', false);
-                               drainDone();
-                            });
-
-                        } else {
-                            lodash.objects.merge(list, buscapeScrapper(error, result, $));
-                            doneStateManager.finishDoneState('scrapeBuscape', false);
+                            doneStateManager.finishDoneState('buscape', true);
                             drainDone();
-                        }
+                        });
                     }
-                }]);
-
+                });
             }
 
             if (externalLinks) {
-
-                debug('We have externalLinks for ' + product.get('title'));
 
                 var names = Object.keys(externalLinks);
                 if (names.length) {
@@ -337,26 +302,25 @@ function updateProductsOffers(updaterCallback) {
                                 if (error || !result) {
                                     debug('an error has ocurred');
                                 } else {
-
-                                    var list;
-
-                                    debug('current name to fetch from is ' + name);
-
                                     switch (name) {
                                         case 'ultrafarma':
-                                            lodash.objects.merge(list, ultrafarmaScrapper(error, result, $));
+                                            list.offers.offers_by_seller.ultrafarma = ultrafarmaScrapper(error, result, $);
                                             break;
                                         case 'farmaconde':
-                                            lodash.objects.merge(list, farmacondeScrapper(error, result, $));
+                                            // TODO remove this
+                                            // TODO remove from here, farmaconde should be used in other place to set the product data (a temporary thing)
+                                            // TODO meh
+                                            list.offers.offers_by_seller.farmaconde = farmacondeScrapper(error, result, $);
                                             break;
                                         case 'netfarma':
-                                            list = netfarmaScrapper(error, result, $);
+                                            list.offers.offers_by_seller.netfarma = netfarmaScrapper(error, result, $);
                                             break;
                                         default:
                                             // do nothing
                                             break;
                                     }
                                 }
+
                                 doneStateManager.finishDoneState(externalLinks[name], true);
                                 drainDone();
                             }
@@ -364,17 +328,58 @@ function updateProductsOffers(updaterCallback) {
                     });
                 } else {
                     // no external links
-                    // TODO what to do? Nothing i guess
+                    drainDone();
                 }
             } else {
                 // external links returned undefined
-                // TODO what to do? Nothing i ugess
+                drainDone();
             }
         }
 
-        function next () {
+
+        // Retrive product extra data information from product page
+        function extraProductInformation(product, queueCallback) {
+
+            var list,
+                crawlerLink,
+                requiredData,
+                productId;
+
+            buscapeCrawlerLink =  product.get('original_link');
+            buscapeProductId = product.get('id_buscape');
+            list = {};
+
+            // if there is a valid productid, crawler link and valid url we can start scraping
+            if(buscapeProductId && buscapeCrawlerLink && validUrl.isUri(buscapeCrawlerLink.url)) {
+
+                crawler.queue([{
+                    uri: buscapeCrawlerLink.url,   // the product page link
+                    userAgent: 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36',
+                    callback: function (error, result, $) {
+
+                        if (error || !result) {
+                            logsData.save('OfferWorker', 'Invalid URL provided for scrapping for product ' + product.get('title'), function (err) {
+                               queueCallback(list);
+                            });
+                        } else {
+                            list = buscapeScrapper(error, result, $);
+                            queueCallback(list);
+                        }
+                    }
+                }]);
+
+            } else {
+                logsData.save('OfferWorker', 'No data to look for extraProductInformation for product: ' + product.get('title'), function (err) {
+                   queueCallback(list);
+                });
+            }
+        }
+
+        function next() {
             if (queueScrapeDone && queueOfferDone) {
-                debug('queueScrapeDOne and queueOfferDone, continue saving...');
+
+                debug('queueScrapeDone and queueOfferDone, continue saving...');
+
                 // update procuts with the offers and scraping data
                 products.db.saveAll(callCallback);
             }
@@ -384,12 +389,13 @@ function updateProductsOffers(updaterCallback) {
         products.db.getAll(function (productsList) {
 
             var queueScrape,
+                queueOfferExternal,
                 queueOffer;
 
             if (productsList.length) {
 
                 // what function to run to scrape the product page
-                queueScrape = async.queue(scrapeProductPage, connections.max.scrapeProductPage);
+                queueScrape = async.queue(extraProductInformation, connections.max.extraProductInformation);
 
                 // what funciton to run to get the offers
                 queueOffer = async.queue(getOffers, connections.max.getOffers);
@@ -415,15 +421,18 @@ function updateProductsOffers(updaterCallback) {
                             // The error were already registered before the callback
                         }
                     });
+
                 });
 
                 // assign a callback when all queues are done
-                queueScrape.drain = function() {
+                queueScrape.drain = function () {
+                    debug('scrape done');
                     queueScrapeDone = true;
                     next();
                 };
 
                 queueOffer.drain = function () {
+                    debug('offer done');
                     queueOfferDone = true;
                     next();
                 };

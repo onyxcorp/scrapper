@@ -28,7 +28,13 @@ function FarmacondeScrapper(error, result, $) {
         normalPrice,
         currentPrice;
 
-    productData = {};
+    productData = {
+        price: {
+            old: 0,
+            value: 0
+        }
+    };
+
     productInfo = $('div.conteudo-full');
 
     // productInfo
@@ -46,12 +52,10 @@ function FarmacondeScrapper(error, result, $) {
     productData.conteudoDosagemTotal = conteudoDosagemTotal ? lodash.string(conteudoDosagemTotal.toLowerCase()).trim().capitalize().value() : '';
     productData.principioAtivo = principioAtivo; // this info is not avaialble...
     productData.productCode = productCode ? helpers.numbersOnly(productCode) : 0;
-    productData.normalPrice = normalPrice ? helpers.priceNumbersOnly(normalPrice) : 0.00;
-    productData.currentPrice = currentPrice ? helpers.priceNumbersOnly(currentPrice) : 0.00;
+    productData.price.old = normalPrice ? helpers.priceNumbersOnly(normalPrice) : 0.00;
+    productData.price.value = currentPrice ? helpers.priceNumbersOnly(currentPrice) : 0.00;
 
     // return all collected and formatted data
-    debug('scrapped from farmaconde');
-    debug(productData);
     return productData;
 }
 
