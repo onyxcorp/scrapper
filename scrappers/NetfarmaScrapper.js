@@ -34,7 +34,7 @@ function NetfarmaScrapper(error, result, $) {
     currentPrice = $('span#PrecoPromocaoProduto').text();
 
     // Do all formating / conversion here as needed
-    productData.title = title ? lodash.string(title.toLowerCase()).trim().capitalize().value() : '';
+    productData.title = title ? lodash.string(title.toLowerCase()).slugify().humanize().value() : '';
     productData.conteudoDosagemTotal = conteudoDosagemTotal ? lodash.string(conteudoDosagemTotal.toLowerCase()).trim().capitalize().value() : '';
     productData.principioAtivo = principioAtivo ? lodash.string(principioAtivo.toLowerCase()).trim().capitalize().value() : '';
     productData.productCode = productCode ? helpers.numbersOnly(productCode) : 0;

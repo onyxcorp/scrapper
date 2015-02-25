@@ -4,6 +4,7 @@ var lodash = {
             omit: require('lodash-node/modern/objects/omit'),
             transform: require('lodash-node/modern/objects/transform')
         },
+        string: require('underscore.string'),
         collections: {
             pluck: require('lodash-node/modern/collections/pluck'),
             forEach: require('lodash-node/modern/collections/forEach')
@@ -43,22 +44,22 @@ function BuscapeOfferScrapper(data) {
         // it will all be ready for saving
         lodash.collections.forEach(pluckedOffers, function (offer, key) {
 
-            var offerId = offer.seller.id;
+            var offerName = lodash.string(offer.seller.sellername.toLowerCase()).trim().slugify().underscored().value();
 
             // set the current offer as an empty object
-            offers.offers_by_seller[offerId] = {};
+            offers.offers_by_seller[offerName] = {};
 
             // filter data that we don't want (remove)
-            offers.offers_by_seller[offerId].seller = lodash.objects.omit(offer.seller, function (value, key) {
+            offers.offers_by_seller[offerName].seller = lodash.objects.omit(offer.seller, function (value, key) {
                 return toRemove.indexOf(key) !== -1;
             });
 
             // pluck the link property
-            offers.offers_by_seller[offerId].seller.links = lodash.collections.pluck(offer.seller.links, 'link');
+            offers.offers_by_seller[offerName].seller.links = lodash.collections.pluck(offer.seller.links, 'link');
 
             // fix price type (string to integer)
             // result is the object, key is the property and value is the current value of it
-            offers.offers_by_seller[offerId].price = lodash.objects.transform(offer.price, function (result, value, key) {
+            offers.offers_by_seller[offerName].price = lodash.objects.transform(offer.price, function (result, value, key) {
                 // keys => parcel, currency, value
                 if (key === 'parcel' && Object.keys(value).length) {
                     // yep, weird shit, but it works
@@ -71,13 +72,8 @@ function BuscapeOfferScrapper(data) {
                 }
             });
 
-            offers.offers_by_seller[offerId].links = lodash.collections.pluck(offer.links, 'link');
-
-            // removed uneeded data
-            delete offers.offers_by_seller[offerId].seller.id;
+            offers.offers_by_seller[offerName].links = lodash.collections.pluck(offer.links, 'link');
         });
-        console.log('buscape scrapper offers');
-        console.log(offers);
         return offers;
     } else {
         return {};

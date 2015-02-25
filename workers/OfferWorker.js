@@ -93,14 +93,14 @@ function updateProductsOffers(updaterCallback) {
         // Retrive some product offer information
         function getOffers(product, queueCallback) {
 
-            var productId,
+            var buscapeProductId,
                 externalLinks,
                 externalLinksList,
                 doneStateManager,
                 list;
 
             // shortcut to buscape id present at the model
-            productId = product.get('id_buscape');
+            buscapeProductId = product.get('id_buscape');
             // shortcut to buscape id present at the model
             externalLinks = product.get('external_links');
             if (externalLinks) {
@@ -182,21 +182,22 @@ function updateProductsOffers(updaterCallback) {
             }
 
             // if there are no externalLinks, externalLinksList or buscapeId just return the empty offer list
-            if (!productId && (!externalLinks || !externalLinksList.length)) {
+            if (!buscapeProductId && (!externalLinks || !externalLinksList.length)) {
                 drainDone();
             }
 
-            if (productId) {
+            //
+            if (buscapeProductId) {
 
-                // if there is no productId yet, means that it is our first attempt
-                if (!offerAttempts[productId]) {
-                    offerAttempts[productId] = 1;
-                    debug('Ammount of attempts: ' + offerAttempts[productId] + '. Trying to fetch product: ' + productId);
-                } else if (offerAttempts[productId] === 2 || offerAttempts[productId] === 3) {
+                // if there is no buscapeProductId yet, means that it is our first attempt
+                if (!offerAttempts[buscapeProductId]) {
+                    offerAttempts[buscapeProductId] = 1;
+                    debug('Ammount of attempts: ' + offerAttempts[buscapeProductId] + '. Trying to fetch product: ' + buscapeProductId);
+                } else if (offerAttempts[buscapeProductId] === 2 || offerAttempts[buscapeProductId] === 3) {
                     // we are at the second/third run, try to call getOffers again
-                    debug('Ammount of attempts: ' + offerAttempts[productId] + '. Trying to fetch product: ' + productId);
+                    debug('Ammount of attempts: ' + offerAttempts[buscapeProductId] + '. Trying to fetch product: ' + buscapeProductId);
                 } else {
-                    debug('Ammount of attempts: ' + offerAttempts[productId] + '. No more fetching product: '+ productId);
+                    debug('Ammount of attempts: ' + offerAttempts[buscapeProductId] + '. No more fetching product: '+ buscapeProductId);
                     // im tired of this shitty product on this shitty api, next!
                     drainDone('buscape');
                     return;
@@ -206,9 +207,9 @@ function updateProductsOffers(updaterCallback) {
                 // and it's offers
                 // Scrapping Buscape Extra Data Page
                 startDrain('buscape');
-                buscape.findOfferList({productId: productId}, function (res) {
+                buscape.findOfferList({productId: buscapeProductId}, function (res) {
                     if (res instanceof Error) {
-                        offerAttempts[productId] = offerAttempts[productId] + 1;
+                        offerAttempts[buscapeProductId] = offerAttempts[buscapeProductId] + 1;
                         logsData.save('OfferWorker', 'findOfferList error: ' + res.message, function (err) {
                             // call getOffers again if there was an error'
                             getOffers(product, queueCallback);
@@ -271,13 +272,13 @@ function updateProductsOffers(updaterCallback) {
             var list,
                 crawlerLink,
                 requiredData,
-                productId;
+                buscapeProductId;
 
             buscapeCrawlerLink =  product.get('original_link');
             buscapeProductId = product.get('id_buscape');
             list = {};
 
-            // if there is a valid productid, crawler link and valid url we can start scraping
+            // if there is a valid buscapeProductId, crawler link and valid url we can start scraping
             if(buscapeProductId && buscapeCrawlerLink && validUrl.isUri(buscapeCrawlerLink.url)) {
 
                 crawler.queue([{

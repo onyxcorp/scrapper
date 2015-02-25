@@ -48,7 +48,7 @@ function FarmacondeScrapper(error, result, $) {
     normalPrice = productInfo.find('div.pop_produto_de').text();
     currentPrice = productInfo.find('div.pop_produto_total').text();
 
-    productData.title = title ? lodash.string(title.toLowerCase()).trim().capitalize().value() : '';
+    productData.title = title ? lodash.string(title.toLowerCase()).slugify().humanize().value() : '';
     productData.conteudoDosagemTotal = conteudoDosagemTotal ? lodash.string(conteudoDosagemTotal.toLowerCase()).trim().capitalize().value() : '';
     productData.principioAtivo = principioAtivo ? principioAtivo : '';
     productData.productCode = productCode ? helpers.numbersOnly(productCode) : 0;
