@@ -23,6 +23,8 @@ ProductModel = Model.extend({
             id: { type: 'string' },                 // the key from firebase
             id_buscape: { type: 'integer' },        // id reference from buscape
             categories: { type: 'object' },         // reference to category table
+            code: { type: 'integer' },
+            prices: { type: 'object' },
             offers: { type: 'object' },
             thumb: { type: 'object' },
             title: { type: 'string' },

@@ -22,9 +22,8 @@ function FarmacondeScrapper(error, result, $) {
     var productData,
         productInfo,
         title,
-        conteudoDosagemTotal,
-        principioAtivo,
         productCode,
+        productImage,
         normalPrice,
         currentPrice;
 
@@ -41,17 +40,18 @@ function FarmacondeScrapper(error, result, $) {
     title = conteudoDosagemTotal = productInfo.find('h1').text();
 
     // receitaInfo
-    principioAtivo = '';
     productCode = productInfo.find('div.pop_produto_lab').text();
+
+    // image
+    productImage = productInfo.find('div.pop_produto_img img').attr('src');
 
     // price info
     normalPrice = productInfo.find('div.pop_produto_de').text();
     currentPrice = productInfo.find('div.pop_produto_total').text();
 
     productData.title = title ? lodash.string(title.toLowerCase()).slugify().humanize().value() : '';
-    productData.conteudoDosagemTotal = conteudoDosagemTotal ? lodash.string(conteudoDosagemTotal.toLowerCase()).trim().capitalize().value() : '';
-    productData.principioAtivo = principioAtivo ? principioAtivo : '';
     productData.productCode = productCode ? helpers.numbersOnly(productCode) : 0;
+    productData.image = productImage ? 'http://www.farmaconde.com.br/' + lodash.string.strRightBack(productImage, "url_image=") : '';
     productData.price.old = normalPrice ? helpers.priceNumbersOnly(normalPrice) : 0.00;
     productData.price.value = currentPrice ? helpers.priceNumbersOnly(currentPrice) : 0.00;
 

@@ -28,6 +28,7 @@ function UltrafarmaScrapper(error, result, $) {
         receitaInfo,
         principioAtivo,
         productCode,
+        productImage,
         normalPrice,
         currentPrice;
 
@@ -38,13 +39,14 @@ function UltrafarmaScrapper(error, result, $) {
         }
     };
 
-    productInfo = $('div.desc_produtos');
+    productInfo = $('div.envolver');
     receitaInfo = $('div.div_informacoes_receita');
     description = $('div.desc_info_prod').find('font').text();
 
     // productInfo
     title = productInfo.find('div.div_nome_produto').text();
     conteudoDosagemTotal = productInfo.find('div.div_nome_produto').text();
+    productImage = productInfo.find('div.produto_grande img').attr('src');
 
     // receitaInfo
     var extraInfo = receitaInfo.find('div.ajuste_link_ajuda');
@@ -59,6 +61,7 @@ function UltrafarmaScrapper(error, result, $) {
     productData.conteudoDosagemTotal = conteudoDosagemTotal ? lodash.string(conteudoDosagemTotal.toLowerCase()).trim().capitalize().value() : '';
     productData.principioAtivo = principioAtivo ? lodash.string(principioAtivo.toLowerCase()).trim().capitalize().value() : '';
     productData.productCode = productCode ? helpers.numbersOnly(productCode) : 0;
+    productData.productImage = productImage ? productImage : '';
     productData.price.old = normalPrice ? helpers.priceNumbersOnly(normalPrice) : 0.00;
     productData.price.value = currentPrice ? helpers.priceNumbersOnly(currentPrice) : 0.00;
 

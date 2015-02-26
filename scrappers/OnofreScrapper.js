@@ -6,7 +6,7 @@ var lodash = {
     debug = function (msg) { console.log(msg); };
 
 
-function NetfarmaScrapper(error, result, $) {
+function OnofreScrapper(error, result, $) {
 
     var productData,
         productInfo,
@@ -26,21 +26,22 @@ function NetfarmaScrapper(error, result, $) {
         }
     };
 
-    productInfo = $('div.prodInfo');
-    title = productInfo.find('p.nome').text();
-    conteudoDosagemTotal = productInfo.find('p.gramatura').text();
-    principioAtivo = productInfo.find('p.pAtivo').text();
-    productCode = $('div.codbrand').find('p.codigo').text();
-    productImage = $('img#imagemProduto').attr('src');
-    normalPrice = $('span#PrecoProduto').text();
-    currentPrice = $('span#PrecoPromocaoProduto').text();
+    productInfo = $('div#prod_dir');
+
+    title = productInfo.find('span#lblProductName').text();
+    conteudoDosagemTotal = productInfo.find('span#lblProductName').text();
+    principioAtivo = productInfo.find('span#cphConteudo_lblDescriptionResume').text();
+    productCode = productInfo.find('span#cphConteudo_lblCode').text();
+    productImage = productInfo.find('img#cphConteudo_imgGrande').attr('src');
+    normalPrice = productInfo.find('span.preco_prod_cinza').text();
+    currentPrice = productInfo.find('span.preco_por').text();
 
     // Do all formating / conversion here as needed
     productData.title = title ? lodash.string(title.toLowerCase()).slugify().humanize().value() : '';
     productData.conteudoDosagemTotal = conteudoDosagemTotal ? lodash.string(conteudoDosagemTotal.toLowerCase()).trim().capitalize().value() : '';
     productData.principioAtivo = principioAtivo ? lodash.string(principioAtivo.toLowerCase()).trim().capitalize().value() : '';
     productData.productCode = productCode ? helpers.numbersOnly(productCode) : 0;
-    productData.productImage = productImage ? productImage : '';
+    productData.productImage = productImage ? 'http://www.onofre.com.br' + productImage : '';
     productData.price.old = normalPrice ? helpers.priceNumbersOnly(normalPrice) : 0.00;
     productData.price.value = currentPrice ? helpers.priceNumbersOnly(currentPrice) : 0.00;
 
@@ -48,4 +49,4 @@ function NetfarmaScrapper(error, result, $) {
     return productData;
 }
 
-module.exports = NetfarmaScrapper;
+module.exports = OnofreScrapper;

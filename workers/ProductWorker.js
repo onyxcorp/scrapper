@@ -176,6 +176,7 @@ function updateProducts(updaterCallback) {
                                     pluckLink = lodash.collections.pluck(product.links, 'link');
                                     if (pluckLink) {
                                         link = lodash.collections.find(pluckLink, {type: "product"}) || {};
+                                        link.origin = 'buscape';
                                     }
                                 }
 

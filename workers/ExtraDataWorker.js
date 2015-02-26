@@ -27,10 +27,10 @@ var Buscape = require('../utils/BuscapeAPI'),
         }
     },
     scrappers = {
-        buscape: require('../scrappers/BuscapeScrapper')
+        buscape: require('../scrappers/BuscapeScrapper'),
+        farmaconde: require('../scrappers/FarmacondeScrapper')
     },
     Done = require('../utils/DoneState'),
-    doneStateManager,
     debug = function (message) { console.log(message); },
     buscape,
     crawler,
@@ -87,37 +87,88 @@ function updateProductsOffers(updaterCallback) {
         function extraProductInformation(product, queueCallback) {
 
             var list,
-                crawlerLink,
-                requiredData,
-                buscapeProductId;
+                originalLink,
+                buscapeProductId,
+                doneStateManager;
 
-            buscapeCrawlerLink =  product.get('original_link');
             buscapeProductId = product.get('id_buscape');
-            list = {};
+            originalLink =  product.get('original_link');
+            // shortcut to buscape id present at the model
+
+            list = {
+                filters: {},
+                extraData: {}
+            };
+
+            doneStateManager = new Done();
+
+            function startDrain(name) {
+                doneStateManager.startDoneState(name);
+            }
+
+            function drainDone(name) {
+
+                name = name || null;
+
+                if (name) {
+                    doneStateManager.finishDoneState(name, true);
+                }
+
+                // if doneState is finished or was never defined...
+                if (doneStateManager.getDoneState() || doneStateManager.getDoneState() === null) {
+                    if (Object.keys(list).length) {
+                        queueCallback(list);
+                    } else {
+                        logsData.save('ExtraDataWorker', 'No data to look for extraProductInformation for product: ' + product.get('title'), function (err) {
+                           queueCallback(list);
+                        });
+                    }
+                } else {
+                    debug('drainDone not done yet...');
+                }
+            }
+
 
             // if there is a valid buscapeProductId, crawler link and valid url we can start scraping
-            if(buscapeProductId && buscapeCrawlerLink && validUrl.isUri(buscapeCrawlerLink.url)) {
+            if (originalLink && validUrl.isUri(originalLink.url)) {
 
-                crawler.queue([{
-                    uri: buscapeCrawlerLink.url,   // the product page link
-                    userAgent: 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36',
-                    callback: function (error, result, $) {
+                if (originalLink.source === 'buscape') {
+                    startDrain('buscape');
+                    crawler.queue([{
+                        uri: originalLink.url,   // the product page link
+                        userAgent: 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36',
+                        callback: function (error, result, $) {
 
-                        if (error || !result) {
-                            logsData.save('ExtraDataWorker', 'Invalid URL provided for scrapping for product ' + product.get('title'), function (err) {
-                               queueCallback(list);
-                            });
-                        } else {
-                            list = scrappers.buscape(error, result, $);
-                            queueCallback(list);
+                            if (error || !result) {
+                                logsData.save('ExtraDataWorker', 'Invalid URL provided for scrapping for product ' + product.get('title'), function (err) {
+                                    drainDone('buscape');
+                                });
+                            } else {
+                                list.filters = scrappers.buscape(error, result, $);
+                                drainDone('buscape');
+                            }
                         }
-                    }
-                }]);
+                    }]);
+                } else {
+                    startDrain('farmaconde');
+                    crawler.queue([{
+                        uri: originalLink.url,
+                        userAgent: 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36',
+                        callback: function (error, result, $) {
 
+                            if (error || !result) {
+                                debug('an error has ocurred');
+                            } else {
+                                debug('scrapping farmaconde for extraData');
+                                list.extraData = scrappers.farmaconde(error, result, $);
+                            }
+                            drainDone('farmaconde');
+                        }
+                    }]);
+                }
+                // the product should come from buscape or farmaconde
             } else {
-                logsData.save('ExtraDataWorker', 'No data to look for extraProductInformation for product: ' + product.get('title'), function (err) {
-                   queueCallback(list);
-                });
+                drainDone();
             }
         }
 
@@ -135,15 +186,26 @@ function updateProductsOffers(updaterCallback) {
                 productsList.forEach( function (product) {
 
                     queueScrape.push(product, function (res) {
-                        if (res) {
-                            product.set('filters', res);
+                        debug('response');
+                        debug(res);
+                        if (res && Object.keys(res).length) {
+                            debug('response ok');
+                            product.set('filters', res.filters);
+
+                            // TODO temporary, it's for the farmacondeScrapper only
+                            product.set('title', res.extraData.title);
+                            product.set('code', res.extraData.productCode);
+                            product.set('prices', {
+                                minimum: 0.8 * res.extraData.price.value,
+                                old: res.extraData.price.old,
+                                current: res.extraData.price.value
+                            });
                             // ugly as fuck, merge the current product with the new data
                             // lodash.objects.merge(productsWithExtraData[product.get('id')], res);
                         } else {
                             // The error were already registered before the callback
                         }
                     });
-
                 });
 
                 // assign a callback when all queues are done
