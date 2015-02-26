@@ -26,6 +26,7 @@ LogModel = Model.extend({
             BuscapeAPI: { type: 'array' },
             MemberWorker: { type: 'array' },
             ProductWorker: { type: 'array' },
+            ExtraDataWorker: { type: 'array' },
             OfferWorker: { type: 'array' },
             ReviewWorker: { type: 'array' },
             TaxonomyWorker: { type: 'array' },

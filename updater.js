@@ -3,6 +3,7 @@ var Scheduler = require('node-schedule'),
     async = require('async'),
     taxonomyWorker = require('./workers/TaxonomyWorker'),
     productWorker = require('./workers/ProductWorker'),
+    extraDataWorker = require('./workers/ExtraDataWorker'),
     offerWorker = require('./workers/OfferWorker'),
     reviewWorker = require('./workers/ReviewWorker'),
     memberWorker = require('./workers/MemberWorker'),
@@ -33,6 +34,7 @@ updater = function () {
     async.waterfall([
         taxonomyWorker,
         productWorker, // first update the product from buscape API
+        extraDataWorker,
         offerWorker
         // reviewWorker,
         // memberWorker   // then update the packages information
