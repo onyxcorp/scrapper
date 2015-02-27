@@ -7,16 +7,10 @@
 
 
 */
-var Buscape = require('../utils/BuscapeAPI'),
-    Crawler = require('crawler'),
-    products = require('../data/ProductsData'),
-    async = require('async'),
-    validUrl = require('valid-url'),
+var products = require('../data/ProductsData'),
     logsData = require('../data/LogsData'),
     lodash = {
         objects: {
-            values: require('lodash-node/modern/objects/values'),
-            merge: require('lodash-node/modern/objects/merge'),
             isFunction: require('lodash-node/modern/objects/isFunction')
         },
         collections: {
@@ -24,7 +18,6 @@ var Buscape = require('../utils/BuscapeAPI'),
             forEach: require('lodash-node/modern/collections/forEach')
         }
     },
-    Done = require('../utils/DoneState'),
     debug = function (message) { console.log(message); };
 
 function autoPricingWorker(updaterCallback) {
@@ -59,25 +52,28 @@ function autoPricingWorker(updaterCallback) {
             productsList.forEach(function (product) {
 
                 var offers,
-                    prices,
-                    cheapestOffer,
-                    newPrice;
+                    prices;
 
-                // will be an object { name : {offer} }
+                // an object { name : {offer} }
                 offers = product.get('offers');
-
-                // will be an object { current, minimum, old }
+                // an object { current, minimum, old }
                 prices = product.get('prices');
 
                 // check best offer
                 if (prices.current > offers.best_offer.price.value) {
 
-                    // decrement the price by 1 real if the best offer is bigger than the mininum
+                    // decrement the price by 1 real if the best offer is bigger than the minimum
                     if (offers.best_offer.price.value > prices.minimum) {
+
                         // the new price should be the best offer price - 3% of it's current value
                         prices.current = offers.best_offer.price.value - (offers.best_offer.price.value * 0.03);
+
+                        // check if the new price is bigger than the allowed minimum
+                        if (prices.current < prices.minimum) {
+                            prices.current = prices.minimum;
+                        }
                     } else {
-                        // if the best offer is lower than the mininum, set the price to it's mininum possible value
+                        // if the best offer is lower than the minimum, set the price to it's minimum possible value
                         prices.current = prices.minimum;
                     }
                 }
