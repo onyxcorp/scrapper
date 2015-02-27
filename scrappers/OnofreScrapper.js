@@ -2,51 +2,89 @@
 var lodash = {
         string: require('underscore.string')
     },
+    Model = require('model'),
     helpers = require('../utils/Helpers'),
-    debug = function (msg) { console.log(msg); };
+    debug = function (msg) { console.log(msg); },
+    OnofreOfferModel,
+    onofreOffer;
 
+OnofreOfferModel = Model.extend({
 
-function OnofreScrapper(error, result, $) {
+    _schema: {
+        id: '/OnofreOfferModel',
+        properties: {
+            links: { type: 'object' },
+            price: { type: 'object' },
+            seller: { type: 'object' }
+        }
+    },
 
-    var productData,
-        productInfo,
-        title,
-        conteudoDosagemTotal,
-        description, // nothing yet
-        principioAtivo,
-        productCode,
-        productImage,
+    set: function(attributes, options) {
+        // just call the parent method...
+        Model.prototype.set.apply(this, arguments);
+    },
+
+    setOldPrice: function (oldPrice) {
+        this.attributes.price.old = parseFloat(oldPrice);
+    },
+
+    setCurrentPrice: function (currentPrice) {
+        this.attributes.price.value = parseFloat(currentPrice);
+    },
+
+    setOriginalUrl: function (url) {
+        this.attributes.links[0].url = url;
+    }
+
+});
+
+onofreOffer = new OnofreOfferModel({
+    links: {
+        0: {
+            type: 'offer',
+            url: ''
+        }
+    },
+    seller: {
+        id: 0,
+        links: {
+            0: {
+                type: 'seller',
+                url: 'http://www.onofre.com.br'
+            }
+        },
+        rating: {
+            useraveragerating: {
+                numcomments: 0,
+                rating: 0.0
+            }
+        },
+        sellername: 'Onofre'
+    },
+    price: {
+        currency: {
+            abbreviation: 'BRL'
+        },
+        old: 0,
+        value: 0
+    }
+});
+
+function OnofreScrapper(error, result, $, originalLink) {
+
+    var productInfo,
         normalPrice,
         currentPrice;
 
-    productData = {
-        price: {
-            old: 0,
-            value: 0
-        }
-    };
-
     productInfo = $('div#prod_dir');
-
-    title = productInfo.find('span#lblProductName').text();
-    conteudoDosagemTotal = productInfo.find('span#lblProductName').text();
-    principioAtivo = productInfo.find('span#cphConteudo_lblDescriptionResume').text();
-    productCode = productInfo.find('span#cphConteudo_lblCode').text();
-    productImage = productInfo.find('img#cphConteudo_imgGrande').attr('src');
     normalPrice = productInfo.find('span.preco_prod_cinza').text();
     currentPrice = productInfo.find('span.preco_por').text();
 
-    // Do all formating / conversion here as needed
-    productData.title = title ? lodash.string(title.toLowerCase()).slugify().humanize().value() : '';
-    productData.conteudoDosagemTotal = conteudoDosagemTotal ? lodash.string(conteudoDosagemTotal.toLowerCase()).trim().capitalize().value() : '';
-    productData.principioAtivo = principioAtivo ? lodash.string(principioAtivo.toLowerCase()).trim().capitalize().value() : '';
-    productData.productCode = productCode ? helpers.numbersOnly(productCode) : 0;
-    productData.productImage = productImage ? 'http://www.onofre.com.br' + productImage : '';
-    productData.price.old = normalPrice ? helpers.priceNumbersOnly(normalPrice) : 0.00;
-    productData.price.value = currentPrice ? helpers.priceNumbersOnly(currentPrice) : 0.00;
+    onofreOffer.setOldPrice(normalPrice ? helpers.priceNumbersOnly(normalPrice) : 0.00);
+    onofreOffer.setCurrentPrice(currentPrice ? helpers.priceNumbersOnly(currentPrice) : 0.00);
+    onofreOffer.setOriginalUrl(originalLink);
 
-    // return all collected and formatted data
-    return productData;
+    return onofreOffer.toJSON();
 }
 
 module.exports = OnofreScrapper;

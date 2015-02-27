@@ -193,7 +193,6 @@ function updateProducts(updaterCallback) {
                                     thumb: thumbs,
                                     title: product.productname,
                                     slug: lodash.string.slugify(product.productname),
-                                    description: '', // will be created in the fure
                                     rating: product.rating.useraveragerating,
                                     categories: categories,
                                     original_link: link,

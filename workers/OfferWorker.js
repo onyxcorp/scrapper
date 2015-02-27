@@ -252,7 +252,7 @@ function updateProductsOffers(updaterCallback) {
                                     throw new Error('Invalid scrapper link or it is not a function: ' + link);
                                 }
 
-                                list.offers.offers_by_seller[link] = scrappers[link](error, result, $);
+                                list.offers.offers_by_seller[link] = scrappers[link](error, result, $, externalLinks[link]);
                             }
                             drainDone(externalLinks[link]);
                         }

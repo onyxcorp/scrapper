@@ -2,50 +2,87 @@
 var lodash = {
         string: require('underscore.string')
     },
+    Model = require('model'),
     helpers = require('../utils/Helpers'),
-    debug = function (msg) { console.log(msg); };
+    debug = function (msg) { console.log(msg); },
+    NetfarmaOfferModel,
+    netfarmaOffer;
 
+NetfarmaOfferModel = Model.extend({
 
-function NetfarmaScrapper(error, result, $) {
+    _schema: {
+        id: '/NetfarmaOfferModel',
+        properties: {
+            links: { type: 'object' },
+            price: { type: 'object' },
+            seller: { type: 'object' }
+        }
+    },
 
-    var productData,
-        productInfo,
-        title,
-        conteudoDosagemTotal,
-        description, // nothing yet
-        principioAtivo,
-        productCode,
-        productImage,
-        normalPrice,
+    set: function(attributes, options) {
+        // just call the parent method...
+        Model.prototype.set.apply(this, arguments);
+    },
+
+    setOldPrice: function (oldPrice) {
+        this.attributes.price.old = parseFloat(oldPrice);
+    },
+
+    setCurrentPrice: function (currentPrice) {
+        this.attributes.price.value = parseFloat(currentPrice);
+    },
+
+    setOriginalUrl: function (url) {
+        this.attributes.links[0].url = url;
+    }
+
+});
+
+netfarmaOffer = new NetfarmaOfferModel({
+    links: {
+        0: {
+            type: 'offer',
+            url: ''
+        }
+    },
+    seller: {
+        id: 0,
+        links: {
+            0: {
+                type: 'seller',
+                url: 'http://www.netfarma.com.br'
+            }
+        },
+        rating: {
+            useraveragerating: {
+                numcomments: 0,
+                rating: 0.0
+            }
+        },
+        sellername: 'Netfarma'
+    },
+    price: {
+        currency: {
+            abbreviation: 'BRL'
+        },
+        old: 0,
+        value: 0
+    }
+});
+
+function NetfarmaScrapper(error, result, $, originalLink) {
+
+    var normalPrice,
         currentPrice;
 
-    productData = {
-        price: {
-            old: 0,
-            value: 0
-        }
-    };
-
-    productInfo = $('div.prodInfo');
-    title = productInfo.find('p.nome').text();
-    conteudoDosagemTotal = productInfo.find('p.gramatura').text();
-    principioAtivo = productInfo.find('p.pAtivo').text();
-    productCode = $('div.codbrand').find('p.codigo').text();
-    productImage = $('img#imagemProduto').attr('src');
     normalPrice = $('span#PrecoProduto').text();
     currentPrice = $('span#PrecoPromocaoProduto').text();
 
-    // Do all formating / conversion here as needed
-    productData.title = title ? lodash.string(title.toLowerCase()).slugify().humanize().value() : '';
-    productData.conteudoDosagemTotal = conteudoDosagemTotal ? lodash.string(conteudoDosagemTotal.toLowerCase()).trim().capitalize().value() : '';
-    productData.principioAtivo = principioAtivo ? lodash.string(principioAtivo.toLowerCase()).trim().capitalize().value() : '';
-    productData.productCode = productCode ? helpers.numbersOnly(productCode) : 0;
-    productData.productImage = productImage ? productImage : '';
-    productData.price.old = normalPrice ? helpers.priceNumbersOnly(normalPrice) : 0.00;
-    productData.price.value = currentPrice ? helpers.priceNumbersOnly(currentPrice) : 0.00;
+    netfarmaOffer.setOldPrice(normalPrice ? helpers.priceNumbersOnly(normalPrice) : 0.00);
+    netfarmaOffer.setCurrentPrice(currentPrice ? helpers.priceNumbersOnly(currentPrice) : 0.00);
+    netfarmaOffer.setOriginalUrl(originalLink);
 
-    // return all collected and formatted data
-    return productData;
+    return netfarmaOffer.toJSON();
 }
 
 module.exports = NetfarmaScrapper;

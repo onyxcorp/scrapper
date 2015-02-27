@@ -1,72 +1,88 @@
 
 var lodash = {
-        objects: {
-            values: require('lodash-node/modern/objects/values'),
-            merge: require('lodash-node/modern/objects/merge'),
-            isFunction: require('lodash-node/modern/objects/isFunction')
-        },
-        string: require('underscore.string'),
-        collections: {
-            pick: require('lodash-node/modern/objects/pick'),
-            pluck: require('lodash-node/modern/collections/pluck'),
-            find: require('lodash-node/modern/collections/find'),
-            forEach: require('lodash-node/modern/collections/forEach'),
-            map: require('lodash-node/modern/collections/map')
+        string: require('underscore.string')
+    },
+    Model = require('model'),
+    helpers = require('../utils/Helpers'),
+    debug = function (msg) { console.log(msg); },
+    UltrafarmaOfferModel,
+    ultrafarmaOffer;
+
+UltrafarmaOfferModel = Model.extend({
+
+    _schema: {
+        id: '/UltrafarmaOfferModel',
+        properties: {
+            links: { type: 'object' },
+            price: { type: 'object' },
+            seller: { type: 'object' }
         }
     },
-    helpers = require('../utils/Helpers'),
-    debug = function (msg) { console.log(msg); };
 
+    set: function(attributes, options) {
+        // just call the parent method...
+        Model.prototype.set.apply(this, arguments);
+    },
 
-function UltrafarmaScrapper(error, result, $) {
+    setOldPrice: function (oldPrice) {
+        this.attributes.price.old = parseFloat(oldPrice);
+    },
 
-    var productData,
-        productInfo,
-        title,
-        conteudoDosagemTotal,
-        description,
-        receitaInfo,
-        principioAtivo,
-        productCode,
-        productImage,
-        normalPrice,
+    setCurrentPrice: function (currentPrice) {
+        this.attributes.price.value = parseFloat(currentPrice);
+    },
+
+    setOriginalUrl: function (url) {
+        this.attributes.links[0].url = url;
+    }
+
+});
+
+ultrafarmaOffer = new UltrafarmaOfferModel({
+    links: {
+        0: {
+            type: 'offer',
+            url: ''
+        }
+    },
+    seller: {
+        id: 0,
+        links: {
+            0: {
+                type: 'seller',
+                url: 'http://ultrafarma.com.br/'
+            }
+        },
+        rating: {
+            useraveragerating: {
+                numcomments: 0,
+                rating: 0.0
+            }
+        },
+        sellername: 'Ultrafarma'
+    },
+    price: {
+        currency: {
+            abbreviation: 'BRL'
+        },
+        old: 0,
+        value: 0
+    }
+});
+
+function UltrafarmaScrapper(error, result, $, originalLink) {
+
+    var normalPrice,
         currentPrice;
 
-    productData = {
-        price: {
-            old: 0,
-            value: 0
-        }
-    };
-
-    productInfo = $('div.envolver');
-    receitaInfo = $('div.div_informacoes_receita');
-    description = $('div.desc_info_prod').find('font').text();
-
-    // productInfo
-    title = productInfo.find('div.div_nome_produto').text();
-    conteudoDosagemTotal = productInfo.find('div.div_nome_produto').text();
-    productImage = productInfo.find('div.produto_grande img').attr('src');
-
-    // receitaInfo
-    var extraInfo = receitaInfo.find('div.ajuste_link_ajuda');
-    principioAtivo = extraInfo.eq(0).text();
-    productCode = extraInfo.eq(2).text();
-
-    // price info
     normalPrice = $('div.div_economize').find('del').text();
     currentPrice = $('div.div_preco_detalhe').text();
 
-    productData.title = title ? lodash.string(title.toLowerCase()).slugify().humanize().value() : '';
-    productData.conteudoDosagemTotal = conteudoDosagemTotal ? lodash.string(conteudoDosagemTotal.toLowerCase()).trim().capitalize().value() : '';
-    productData.principioAtivo = principioAtivo ? lodash.string(principioAtivo.toLowerCase()).trim().capitalize().value() : '';
-    productData.productCode = productCode ? helpers.numbersOnly(productCode) : 0;
-    productData.productImage = productImage ? productImage : '';
-    productData.price.old = normalPrice ? helpers.priceNumbersOnly(normalPrice) : 0.00;
-    productData.price.value = currentPrice ? helpers.priceNumbersOnly(currentPrice) : 0.00;
+    ultrafarmaOffer.setOldPrice(normalPrice ? helpers.priceNumbersOnly(normalPrice) : 0.00);
+    ultrafarmaOffer.setCurrentPrice(currentPrice ? helpers.priceNumbersOnly(currentPrice) : 0.00);
+    ultrafarmaOffer.setOriginalUrl(originalLink);
 
-    // return all collected and formatted data
-    return productData;
+    return ultrafarmaOffer.toJSON();
 }
 
 module.exports = UltrafarmaScrapper;

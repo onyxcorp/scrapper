@@ -9,9 +9,6 @@ var Firebase = require('firebase'),
         },
         collections: {
             forEach: require('lodash-node/modern/collections/forEach')
-        },
-        utilities: {
-            inflection: require('underscore.inflections')
         }
     },
     // Test

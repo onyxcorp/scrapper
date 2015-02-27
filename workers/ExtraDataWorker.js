@@ -149,7 +149,7 @@ function updateProductsOffers(updaterCallback) {
                             }
                         }
                     }]);
-                } else {
+                } else if (originalLink.source === 'farmaconde') {
                     startDrain('farmaconde');
                     crawler.queue([{
                         uri: originalLink.url,
@@ -159,14 +159,17 @@ function updateProductsOffers(updaterCallback) {
                             if (error || !result) {
                                 debug('an error has ocurred');
                             } else {
-                                debug('scrapping farmaconde for extraData');
-                                list.extraData = scrappers.farmaconde(error, result, $);
+                                scrappers.farmaconde(error, result, $).then(function (productsData) {
+                                    list.extraData = productsData;
+                                    drainDone('farmaconde');
+                                });
                             }
-                            drainDone('farmaconde');
                         }
                     }]);
+                } else {
+                    // no valid originalLink found for scrapping, just return
+                    drainDone();
                 }
-                // the product should come from buscape or farmaconde
             } else {
                 drainDone();
             }
@@ -186,22 +189,24 @@ function updateProductsOffers(updaterCallback) {
                 productsList.forEach( function (product) {
 
                     queueScrape.push(product, function (res) {
-                        debug('response');
                         debug(res);
                         if (res && Object.keys(res).length) {
-                            debug('response ok');
-                            product.set('filters', res.filters);
+
+                            if (res.filters) {
+                                product.set('filters', res.filters);
+                            }
 
                             // TODO temporary, it's for the farmacondeScrapper only
-                            product.set('title', res.extraData.title);
-                            product.set('code', res.extraData.productCode);
-                            product.set('prices', {
-                                minimum: 0.8 * res.extraData.price.value,
-                                old: res.extraData.price.old,
-                                current: res.extraData.price.value
-                            });
-                            // ugly as fuck, merge the current product with the new data
-                            // lodash.objects.merge(productsWithExtraData[product.get('id')], res);
+                            if (res.extraData && Object.keys(res.extraData).length) {
+                                product.set('title', res.extraData.title);
+                                product.set('code', res.extraData.productCode);
+                                product.set('thumb', res.extraData.thumb);
+                                product.set('prices', {
+                                    minimum: 0.8 * res.extraData.price.value,
+                                    old: res.extraData.price.old,
+                                    current: res.extraData.price.value
+                                });
+                            }
                         } else {
                             // The error were already registered before the callback
                         }
