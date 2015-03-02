@@ -17,8 +17,7 @@ var Buscape = require('../utils/BuscapeAPI'),
         objects: {
             values: require('lodash-node/modern/objects/values'),
             merge: require('lodash-node/modern/objects/merge'),
-            isFunction: require('lodash-node/modern/objects/isFunction'),
-            forOwn: require('lodash-node/modern/objects/forOwn')
+            isFunction: require('lodash-node/modern/objects/isFunction')
         },
         collections: {
             min: require('lodash-node/modern/collections/min'),
@@ -42,7 +41,8 @@ var Buscape = require('../utils/BuscapeAPI'),
 connections = {
     max: {
         crawler: 40,
-        getOffers: 40
+        getOffers: 40,
+        extraLinksOffers: 40
     }
 };
 
@@ -62,18 +62,19 @@ function updateProductsOffers(updaterCallback) {
             var message;
 
             if (err) {
-                message = 'Update Product Finished - Errors';
+                message = 'Update Products Offer Finished - Errors';
             } else {
-                message = 'Update Product Finished - Success';
+                message = 'Update Products Offer Finished - Success';
             }
 
+            debug(message);
             logsData.save('OfferWorker', message, function () {
                 updaterCallback(err);
             });
         }
     }
 
-    function findProductsExtraData(callback) {
+    function findProductsExtraData() {
 
         var queueScrapeDone,
             queueOfferDone,
@@ -92,7 +93,6 @@ function updateProductsOffers(updaterCallback) {
 
             var buscapeProductId,
                 externalLinks,
-                externalLinksList,
                 doneStateManager,
                 list;
 
@@ -100,9 +100,6 @@ function updateProductsOffers(updaterCallback) {
             buscapeProductId = product.get('id_buscape');
             // shortcut to buscape id present at the model
             externalLinks = product.get('external_links');
-            if (externalLinks) {
-                externalLinksList = Object.keys(externalLinks);
-            }
 
             list = {
                 offers: {
@@ -164,6 +161,7 @@ function updateProductsOffers(updaterCallback) {
 
                 // if doneState is finished or was never defined...
                 if (doneStateManager.getDoneState() || doneStateManager.getDoneState() === null) {
+                    debug('done state is done');
                     if (Object.keys(list).length) {
                         setOffersExtraData();
                         queueCallback(list);
@@ -173,16 +171,20 @@ function updateProductsOffers(updaterCallback) {
                         });
                     }
                 } else {
-                    debug('drainDone not done yet...');
+                    debug('updateProductsOffers - drainDone not done yet...');
+                    debug(doneStateManager.doneObject);
                 }
             }
 
-            // if there are no externalLinks, externalLinksList or buscapeId just return the empty offer list
-            if (!buscapeProductId && (!externalLinks || !externalLinksList.length)) {
+            // if there are no externalLinks, buscapeId just return the empty offer list
+            if (!buscapeProductId && !externalLinks) {
+                debug('no buscape id or external links');
                 drainDone();
             }
 
             if (buscapeProductId) {
+
+                startDrain('buscape');
 
                 // if there is no buscapeProductId yet, means that it is our first attempt
                 if (!offerAttempts[buscapeProductId]) {
@@ -201,7 +203,6 @@ function updateProductsOffers(updaterCallback) {
                 // simple call the api with some parameters, fetching the product information
                 // and it's offers
                 // Scrapping Buscape Extra Data Page
-                startDrain('buscape');
                 buscape.findOfferList({productId: buscapeProductId}, function (res) {
                     if (res instanceof Error) {
                         offerAttempts[buscapeProductId] = offerAttempts[buscapeProductId] + 1;
@@ -217,9 +218,7 @@ function updateProductsOffers(updaterCallback) {
                             if (res.body.offer) {
                                 lodash.objects.merge(list.offers, scrappers.buscapeOffer(res.body.offer));
                             }
-
                             drainDone('buscape');
-
                         } else {
                             logsData.save('OfferWorker', 'No response from the api', function (err) {
                                 drainDone('buscape');
@@ -227,38 +226,59 @@ function updateProductsOffers(updaterCallback) {
                         }
                     } else {
                         logsData.save('OfferWorker', 'Problems with BuscapeAPI request on findProductsExtraData', function (err) {
-                            drainDone();
+                            drainDone('buscape');
                         });
                     }
                 });
             }
 
-            if (externalLinks && externalLinksList.length) {
-                externalLinksList.forEach(function (link) {
-                    // start all done states references, since the loop wil run faster
-                    // then the callbacks will be called, it will not cause a bug
-                    // of returning earlier than all done's were set
-                    doneStateManager.startDoneState(externalLinks[link]);
-                    crawler.queue([{
-                        uri: externalLinks[link],
-                        userAgent: 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36',
-                        callback: function (error, result, $) {
+            function getExternalLinksData(data, queueCallback) {
 
-                            if (error || !result) {
-                                debug('an error has ocurred');
-                            } else {
+                crawler.queue([{
+                    uri: data.link,
+                    timeout: 5000,
+                    userAgent: 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36',
+                    callback: function (error, result, $) {
 
-                                if (!scrappers[link] || typeof scrappers[link] !== 'function') {
-                                    throw new Error('Invalid scrapper link or it is not a function: ' + link);
-                                }
+                        if (error || !result) {
+                            queueCallback(error || null);
+                        } else {
 
-                                list.offers.offers_by_seller[link] = scrappers[link](error, result, $, externalLinks[link]);
+                            if (!scrappers[data.name] || typeof scrappers[data.name] !== 'function') {
+                                throw new Error('Invalid scrapper link or it is not a function: ' + link);
                             }
-                            drainDone(externalLinks[link]);
+
+                            queueCallback(scrappers[data.name](error, result, $, data.link));
                         }
-                    }]);
-                });
+                    }
+                }]);
             }
+
+            if (externalLinks) {
+
+                var queueExternalLinks;
+
+                queueExternalLinks = async.queue(getExternalLinksData, connections.max.extraLinksOffers);
+
+                startDrain('external_links');
+
+                lodash.collections.forEach(externalLinks, function (link, name) {
+                    queueExternalLinks.push({link: link, name: name}, function (res) {
+                        if (res instanceof Error) {
+                            debug('Returned with an error');
+                        } else if (res) {
+                            list.offers.offers_by_seller[name] = res;
+                        } else {
+                            debug('no information returned');
+                        }
+                    });
+                });
+
+                queueExternalLinks.drain = function () {
+                    drainDone('external_links');
+                };
+            }
+
         }
 
         // get all products, a collection will be returned

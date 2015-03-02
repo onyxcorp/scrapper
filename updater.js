@@ -6,6 +6,7 @@ var Scheduler = require('node-schedule'),
     extraDataWorker = require('./workers/ExtraDataWorker'),
     offerWorker = require('./workers/OfferWorker'),
     autoPricingWorker = require('./workers/AutoPricingWorker'),
+    productPriceHistoryWorker = require('./workers/ProductPriceHistoryWorker'),
     reviewWorker = require('./workers/ReviewWorker'),
     memberWorker = require('./workers/MemberWorker'),
     logsData = require('./data/LogsData'),
@@ -33,11 +34,12 @@ var stopwatch = setInterval(function () {
 updater = function () {
     // utilizar ASYNC waterfall com os dois métodos abaixo
     async.waterfall([
-        taxonomyWorker,
-        productWorker, // first update the product from buscape API
+        // taxonomyWorker,
+        // productWorker, // first update the product from buscape API
         extraDataWorker,
         offerWorker,
-        autoPricingWorker
+        autoPricingWorker,
+        productPriceHistoryWorker
         // reviewWorker,
         // memberWorker   // then update the packages information
     ], function (err, result) {

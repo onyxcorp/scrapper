@@ -36,7 +36,6 @@ ProductPriceHistoryModel = Model.extend({
         id: '/ProductPriceHistory',
         properties: {
             id: { type: 'string' },        // the productId this history references to
-            id_buscape: { type: 'integer' }, // the buscape_id
             days: { type : 'object' }    // array of objects containing { timestamp : { min, max } }
         }
     }
@@ -87,7 +86,7 @@ ProductPriceHistory = {
                             }
                         });
                     } else {
-                        debug('ProductsPriceHistoryData', 'Invalid model - ' + model.get('id') || model.get('id_buscape'));
+                        debug('ProductsPriceHistoryData', 'Invalid model - ' + model.get('id'));
                         debug(model.validationError);
                     }
                 });
@@ -105,13 +104,16 @@ ProductPriceHistory = {
 
             function saveProduct(productsCol) {
 
+                var identificationAttribute;
+
                 // get the product price history model we want to save an price history of
                 model = collection.get(id);
+                identificationAttribute = model.get('id');
 
                 // check if exists
                 if (model) {
 
-                    ProductPriceHistory.db.find(model, function(res) {
+                    db.findByKey(identificationAttribute, function (res) {
 
                         // we have a price history for this product, update it
                         if (res) {
@@ -177,7 +179,7 @@ ProductPriceHistory = {
                                         // TODO untested
                                         logsData.save(
                                             'ProductsPriceHistoryData',
-                                            'The model with id_buscape of: ' + model.get('id_buscape') + ' has an invalid type of days attribute',
+                                            'The model with id of: ' + identificationAttribute + ' has an invalid type of days attribute',
                                             function (err) {
                                                 callback(null);
                                             }
@@ -192,7 +194,7 @@ ProductPriceHistory = {
                                 // TODO untested
                                 logsData.save(
                                     'ProductsPriceHistoryData',
-                                    'lastDayModel or lastDayDatabase were invalid instances of Date for the model id_buscape: ' + model.get('id_buscape'),
+                                    'lastDayModel or lastDayDatabase were invalid instances of Date for the model id: ' + identificationAttribute,
                                     function (err) {
                                         callback(null);
                                     }
@@ -201,8 +203,8 @@ ProductPriceHistory = {
                         } else {
                             // new product price history, let's add it
                             var productFound;
-                            // encontrar o produto através do id_buscape dele
-                            productFound = productsCol.findWhere({id_buscape:model.get('id_buscape')});
+                            // encontrar o produto através do id dele
+                            productFound = productsCol.findWhere({id:identificationAttribute});
                             if(productFound) {
                                 db.child(productFound.get('id')).save(model, callback);
                             }
@@ -221,35 +223,7 @@ ProductPriceHistory = {
             } else {
                 saveProduct(productsDatabaseCollection);
             }
-        },
-        find: function (model, callback) {  // ok
-
-            var modelIdBuscape;
-
-            // this method need an obrigatory callback
-            if (!callback || !lodash.objects.isFunction(callback)) return;
-
-            // procurar se o produto existe através da propriedade id_buscape dele
-            // TODO make possible to search for history by it's id (firebase key)
-            modelIdBuscape = model.get('id_buscape');
-            if (modelIdBuscape) {
-                try {
-                    db.orderByChild('id_buscape').equalTo(modelIdBuscape).once('value', function (snapshot) {
-                        callback(snapshot.val());
-                    });
-                } catch (err) {
-                    logsData.save('ProductsPriceHistoryData', 'Invalid identificationAttribute', function (err) {
-                        callback(false);
-                    });
-                    debug(err);
-                }
-            } else {
-                logsData.save('ProductsPriceHistoryData', 'No model/id_buscape to look for', function (err) {
-                    callback(false);
-                });
-            }
-        },
-        remove: db.remove
+        }
     }
 };
 

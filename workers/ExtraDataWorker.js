@@ -46,7 +46,7 @@ connections = {
 // Run all constructors
 buscape = new Buscape();
 
-function updateProductsOffers(updaterCallback) {
+function updateExtraData(updaterCallback) {
 
     logsData.save('ExtraDataWorker', 'Update Products Started', function (err) {
         findProductsExtraData();
@@ -124,7 +124,7 @@ function updateProductsOffers(updaterCallback) {
                         });
                     }
                 } else {
-                    debug('drainDone not done yet...');
+
                 }
             }
 
@@ -189,7 +189,6 @@ function updateProductsOffers(updaterCallback) {
                 productsList.forEach( function (product) {
 
                     queueScrape.push(product, function (res) {
-                        debug(res);
                         if (res && Object.keys(res).length) {
 
                             if (res.filters) {
@@ -227,4 +226,4 @@ function updateProductsOffers(updaterCallback) {
     }
 }
 
-module.exports = updateProductsOffers;
+module.exports = updateExtraData;

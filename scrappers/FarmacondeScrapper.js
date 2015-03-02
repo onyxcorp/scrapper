@@ -41,7 +41,6 @@ function createFarmacondeProductObject(title, productCode, productImageLink, pro
     productData.title = title ? lodash.string(title.toLowerCase()).slugify().humanize().value() : '';
     productData.productCode = productCode ? helpers.numbersOnly(productCode) : 0;
     if(productImageLink && productImageData) {
-        debug(productImageData);
         productData.thumb.large = {
             height: productImageData.height,
             url: productImageLink,

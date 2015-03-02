@@ -10,13 +10,10 @@
 var Buscape = require('../utils/BuscapeAPI'),
     categories = require('../data/CategoriesData'),
     products = require('../data/ProductsData'),
-    productsPriceHistory = require('../data/ProductsPriceHistoryData'),
     async = require('async'),
     logsData = require('../data/LogsData'),
     lodash = {
         objects: {
-            values: require('lodash-node/modern/objects/values'),
-            merge: require('lodash-node/modern/objects/merge'),
             isFunction: require('lodash-node/modern/objects/isFunction')
         },
         string: require('underscore.string'),
@@ -77,19 +74,15 @@ function updateProducts(updaterCallback) {
 
         function getProducts(idCategory, queueCallback) {
 
-            function findProductList(currentPage, totalPages, productsList, productsPriceHistoryList) {
+            function findProductList(currentPage, totalPages, productsList) {
 
                 currentPage = currentPage || 1;
                 totalPages = 1; // totalPages || null;
                 productsList = productsList || [];
-                productsPriceHistoryList = productsPriceHistoryList || [];
 
                 // we should just leave if the currentPage exceedd by 1 the total pages
                 if (currentPage > totalPages) {
-                    queueCallback({
-                        products: productsList,
-                        priceHistory: productsPriceHistoryList
-                    });
+                    queueCallback(productsList);
                     return;
                 }
 
@@ -113,13 +106,13 @@ function updateProducts(updaterCallback) {
                         logsData.save('ProductWorker', 'findProductList error: ' + res.message, function (err) {
                             // going to try a second attempt with the same stats
                             attempts[currentPage] = attempts[currentPage] ? attempts[currentPage] + 1 : 1;
-                            findProductList(currentPage, totalPages, productsList, productsPriceHistoryList);
+                            findProductList(currentPage, totalPages, productsList);
                         });
                     } else if (res) {
+
                         var responseProducts,
                             responseCategory,
-                            newProductsList,
-                            newProductsPriceHistoryList;
+                            newProductsList;
 
                         responseProducts = res.body.product;
                         responseCategory = res.body.category;
@@ -201,37 +194,9 @@ function updateProducts(updaterCallback) {
                             });
                             productsList = productsList.concat(newProductsList);
 
-                            // get the current page price history list
-                            newProductsPriceHistoryList = lodash.collections.map(res.body.product, function (data, key) {
-
-                                var priceHistory,
-                                    product;
-
-                                product = data.product;
-
-                                // set the data history for when this data was collected
-                                // use timestamp as the key
-                                // The format should be
-                                // priceHistory.timestamp = {
-                                //  min : 100,
-                                //  max : 200
-                                // }
-                                priceHistory = {};
-                                priceHistory[new Date().getTime()] = {
-                                    max: product.pricemax ? parseFloat(product.pricemax) || product.pricemax : 0,
-                                    min: product.pricemin ? parseFloat(product.pricemin) || product.pricemin : 0
-                                };
-
-                                return {
-                                    id_buscape: product.id,
-                                    days: priceHistory
-                                };
-                            });
-                            productsPriceHistoryList = productsPriceHistoryList.concat(newProductsPriceHistoryList);
-
                             // check if we are at the last page or not
                             var nextPage = currentPage + 1;
-                            findProductList(nextPage, totalPages, productsList, productsPriceHistoryList);
+                            findProductList(nextPage, totalPages, productsList);
 
                         } else {
                             logsData.save('ProductWorker', 'No products found today', function (err) {
@@ -276,21 +241,14 @@ function updateProducts(updaterCallback) {
                     queueProducts.push(category.get('id_buscape'), function (res) {
                         if (res) {
                             // add the products to the collection
-                            products.create(res.products);
-                            // add the products price history to the collection
-                            productsPriceHistory.create(res.priceHistory);
+                            products.create(res);
                         }
                     });
                 });
 
                 // assign a callback when all queues are done
                 queueProducts.drain = function() {
-
-                    products.db.saveAll( function () {
-                        // update products price history and then call final callback
-                        productsPriceHistory.db.saveAll(callCallback);
-                    });
-
+                    products.db.saveAll(callCallback);
                 };
 
             } else {

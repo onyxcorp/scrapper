@@ -33,11 +33,12 @@ function autoPricingWorker(updaterCallback) {
             var message;
 
             if (err) {
-                message = 'Update Product Extra Data Finished - Errors';
+                message = 'Update Product Auto Pricing Finished - Errors';
             } else {
-                message = 'Update Product Extra Data Finished - Success';
+                message = 'Update Product Auto Pricing Finished - Success';
             }
 
+            debug(message);
             logsData.save('AutoPricingWorker', message, function () {
                 updaterCallback(err);
             });

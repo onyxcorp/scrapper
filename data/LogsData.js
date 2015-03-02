@@ -29,6 +29,7 @@ LogModel = Model.extend({
             ExtraDataWorker: { type: 'array' },
             OfferWorker: { type: 'array' },
             AutoPricingWorker: { type: 'array' },
+            ProductPriceHistoryWorker: { type: 'array' },
             ReviewWorker: { type: 'array' },
             TaxonomyWorker: { type: 'array' },
             CategoriesData: { type: 'array' },
