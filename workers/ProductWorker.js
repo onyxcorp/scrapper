@@ -77,7 +77,7 @@ function updateProducts(updaterCallback) {
             function findProductList(currentPage, totalPages, productsList) {
 
                 currentPage = currentPage || 1;
-                totalPages = 1; // totalPages || null;
+                totalPages = 10; //totalPages || null;
                 productsList = productsList || [];
 
                 // we should just leave if the currentPage exceedd by 1 the total pages
@@ -100,7 +100,7 @@ function updateProducts(updaterCallback) {
                     debug('Ammount of attempts: ' + attempts[currentPage] + '. Trying to fetch page: ' + currentPage);
                 }
 
-                buscape.findProductList({categoryId:idCategory, page:currentPage, results: 10}, function (res) {
+                buscape.findProductList({categoryId:idCategory, page:currentPage, results: 50}, function (res) {
 
                     if (res instanceof Error) {
                         logsData.save('ProductWorker', 'findProductList error: ' + res.message, function (err) {

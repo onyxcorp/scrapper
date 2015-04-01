@@ -39,8 +39,8 @@ var Buscape = require('../utils/BuscapeAPI'),
     debug = function (msg) { console.log(msg); };
 
 categoriesListId = [
-    // 4029,   // buscape suplement id
-    9575    // buscape remedy id
+    4029   // buscape suplement id
+    // 9575    // buscape remedy id
 ];
 
 buscape = new Buscape();

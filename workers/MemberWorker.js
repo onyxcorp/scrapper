@@ -53,63 +53,63 @@ function updateFiltersMembers(updateCallback) {
         }
     }
 
-    function logSuccess(message, callback) {
-        logsData.save('MemberWorker', message, function (err) {
-            callback(null); // return callback without error
-        });
-    }
+    function run() {
 
-    function logError(message, callback) {
-        logsData.save('MemberWorker', message, function (err) {
-            callback(true); // return callback with error
-        });
-    }
+        // filterName will be categories/package/suppliers, etc
+        // products are an list of products from the database
+        function updateList(data, filterName, products) {
 
-    // filterName will be categories/package/suppliers, etc
-    // products are an list of products from the database
-    function updateList(data, filterName, products) {
+            var items = [];
 
-        var items = [];
+            // Iterate over each category
+            items = data.map(function (item) {
 
-        // Iterate over each category
-        items = data.map(function (item) {
+                var itemData = null,
+                    members = {},
+                    productItemAttribute;
 
-            var itemData = null,
-                members = {},
-                productItemAttribute;
+                // for each category iterate over each product
+                products.forEach( function (product, key) {
 
-            // for each category iterate over each product
-            products.forEach( function (product, key) {
+                    // get the category attribute from the product
+                    productItemAttribute = product.get('filters');
 
-                debug(product);
-                // get the category attribute from the product
-                productItemAttribute = product.get(filterName);
+                    // if the product.categories attribute has the current item being iterated...
+                    if (productItemAttribute && (productItemAttribute === item || productItemAttribute[item])) {
+                        members[product.id] = true;
+                    }
 
-                // if the product.categories attribute has the current item being iterated...
-                if (productItemAttribute && (productItemAttribute === item || productItemAttribute[item])) {
-                    members[product.id] = true;
+                });
+
+                // assign the members to the item
+                if (item && members) {
+                    itemData = {
+                        slug: item,
+                        members: members
+                    };
                 }
 
+                return itemData;
             });
 
-            // assign the members to the item
-            if (item && members) {
-                itemData = {
-                    slug: item,
-                    members: members
-                };
-            }
+            // remove null elements
+            items = lodash.arrays.without(items, null);
 
-            return itemData;
-        });
+            return items;
+        }
 
-        // remove null elements
-        items = lodash.arrays.without(items, null);
+        function logSuccess(message, callback) {
+            logsData.save('MemberWorker', message, function (err) {
+                callback(null); // return callback without error
+            });
+        }
 
-        return items;
-    }
+        function logError(message, callback) {
+            logsData.save('MemberWorker', message, function (err) {
+                callback(true); // return callback with error
+            });
+        }
 
-    function run() {
         // GET ALL PRODUCTS
         productsData.db.getAll(function (products) {
 
@@ -156,7 +156,7 @@ function updateFiltersMembers(updateCallback) {
 
                 if (filters.length) {
                     var currentFilter = filtersData.create(filterName, filters);
-                    if(currentFilter.collection.length) {
+                    if (currentFilter.collection.length) {
                         currentFilter.saveAll(callback);
                     } else {
                         logError('An error ocurred while updating ' + filterName + ' members', callback);
@@ -165,7 +165,6 @@ function updateFiltersMembers(updateCallback) {
                     logSuccess('No ' + filterName + ' to update today', callback);
                 }
             }
-
 
             function updatePackages(callback) {
                 abstractUpdateFilters('package', callback);

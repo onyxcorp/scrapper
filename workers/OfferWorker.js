@@ -67,7 +67,6 @@ function updateProductsOffers(updaterCallback) {
                 message = 'Update Products Offer Finished - Success';
             }
 
-            debug(message);
             logsData.save('OfferWorker', message, function () {
                 updaterCallback(err);
             });
@@ -161,7 +160,6 @@ function updateProductsOffers(updaterCallback) {
 
                 // if doneState is finished or was never defined...
                 if (doneStateManager.getDoneState() || doneStateManager.getDoneState() === null) {
-                    debug('done state is done');
                     if (Object.keys(list).length) {
                         setOffersExtraData();
                         queueCallback(list);
@@ -172,13 +170,11 @@ function updateProductsOffers(updaterCallback) {
                     }
                 } else {
                     debug('updateProductsOffers - drainDone not done yet...');
-                    debug(doneStateManager.doneObject);
                 }
             }
 
             // if there are no externalLinks, buscapeId just return the empty offer list
             if (!buscapeProductId && !externalLinks) {
-                debug('no buscape id or external links');
                 drainDone();
             }
 

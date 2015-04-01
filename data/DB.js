@@ -12,12 +12,12 @@ var Firebase = require('firebase'),
         }
     },
     // Test
-    baseUrl = 'https://blinding-torch-729.firebaseio.com/',
-    authKey = 'UIhQX4xHqS9LuXx1xovNf7t3x1ZwZHUrpksMUOQT',
+    // baseUrl = 'https://blinding-torch-729.firebaseio.com/',
+    // authKey = 'UIhQX4xHqS9LuXx1xovNf7t3x1ZwZHUrpksMUOQT',
 
     // Production
-    // baseUrl = 'https://glowing-torch-4538.firebaseio.com/',
-    // authKey = 'PCEpiBg4lVOJjSeCZqCIgUitMDmuemq2tjtJ1i6v',
+    baseUrl = 'https://glowing-torch-4538.firebaseio.com/',
+    authKey = 'PCEpiBg4lVOJjSeCZqCIgUitMDmuemq2tjtJ1i6v',
 
     // common
     refs,

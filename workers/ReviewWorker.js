@@ -32,7 +32,7 @@ connections = {
 function updateProductsReview(updateCallback) {
 
     logsData.save('ReviewWorker', 'Update Products Started', function (err) {
-        runAsync();
+        findProductsReviews();
     });
 
     // wrapper to call the callback
@@ -53,53 +53,31 @@ function updateProductsReview(updateCallback) {
         }
     }
 
-    function findProductsUserRatings(categoryProducts, callback) {
-        debug('findProductsUserRatings');
-        // TODO preciso pegar os ratings dos usuários ainda
-        logsData.save('ReviewWorker', 'findProductRatings ainda não finalizado', function (err) {
-            callback(null, categoryProducts);
-        });
-        // Buscape.viewUserRatings(productId);
-        //      |- acessar o firebase e salvar com as informações coletadas
-        //         somente salvar produtos novos e atualizar os products rating
+    function findProductsReviews() {
 
-    }
+        function findProductsUserRatings(product, queueCallback) {
 
-    // order the async call and the requests order
-    function runAsync() {
-        async.waterfall([
-            findProductsUserRatings
-        ], function (err, categoryProducts) {     // callback when all requests are done
+            // TODO preciso pegar os ratings dos usuários ainda
+            logsData.save('ReviewWorker', 'findProductRatings ainda não finalizado', function (err) {
+                queueCallback(false);
+            });
+            // Buscape.viewUserRatings(productId);
+            //      |- acessar o firebase e salvar com as informações coletadas
+            //         somente salvar produtos novos e atualizar os products rating
 
-            throw new Error('Finish on review on purpose');
-            
-            var productsModels,
-                queueSave;
+        }
 
-            function saveProductsData(categoryData, callback) {
+        // get all products, a collection will be returned
+        products.db.getAll(function (productsList) {
 
-                // retorna as collections após criar elas
-                productsModels = products.create(categoryData.products);
+            var queueProductReview;
 
-                if (productsModels) {
-                    // update procuts
-                    products.db.saveAll(callback);
+            if (productsList.length) {
 
-                } else {
-                    logsData.save('ReviewWorker', 'An error ocurred while trying to create the models', function (err) {
-                        callback(true); // true because error
-                    });
-                }
-            }
+                queueProductReview = async.queue(findProductsUserRatings, connections.max.saveProductsData);
 
-            if (err) {
-                callCallback(err);
-            } else {
-
-                queueSave = async.queue(saveProductsData, connections.max.saveProductsData);
-
-                lodash.collections.forEach(categoryProducts, function (categoryData, categoryKey) {
-                    queueSave.push(categoryData, function (res) {
+                productsList.forEach( function (product) {
+                    queueProductReview.push(product, function (res) {
                         if (res) {
                             err = true;
                         }
@@ -107,13 +85,18 @@ function updateProductsReview(updateCallback) {
                 });
 
                 // assign a callback when all queues are done
-                queueSave.drain = function() {
-                    callCallback(err);
+                queueProductReview.drain = function() {
+                    // products.db.saveAll(callCallback);
+                    callCallback();
                 };
+
+            } else {
+                logsData.save('ReviewWorker', 'Sem category ou length para categoryProducts', function (err) {
+                    callCallback();
+                });
             }
         });
     }
-
 }
 
 module.exports = updateProductsReview;
