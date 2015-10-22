@@ -18,11 +18,14 @@
     "q": "^1.2.0",
     "react": "^0.12.1",
     "reactify": "^0.17.1",
+    "sails-mysql": "^0.11.0",
     "superagent": "^0.21.0",
     "transmuter": "git+https://github.com/onyxcorp/transmuter",
     "underscore.string": "^3.0.3",
     "url": "^0.10.2",
-    "valid-url": "^1.0.9"
+    "valid-url": "^1.0.9",
+    "waterline": "^0.10.26",
+    "xml2js": "^0.4.13"
   },
   "devDependencies": {},
   "scripts": {
