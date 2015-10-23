@@ -64,17 +64,14 @@ module.exports = {
                     // but since on the first argument we are searching using
                     // a field that is set as UNIQUE we can be sure that the
                     // stores are actually a single store
-                    return [stores.id, data.storeScrapper[stores.slug]];
-
-                })
-                .spread( function (storeId, currentStoreScrapper) {
+                    var currentStoreScrapper = data.storeScrapper[stores.slug];
 
                     // now that we have the store saved, lets save also its
                     // scrapper data configuration, we also have to return it
                     // so the outermost .then is called (the one being used with the Promise.each)
                     // 2ND LEVEL OF SAVING DATA
                     return StoreScrapper.findOrCreate(
-                        { store: storeId },   // find criteria
+                        { store: stores.id },   // find criteria
                         {
                             name: currentStoreScrapper.name,    // data to save
                             link: currentStoreScrapper.link,
@@ -82,7 +79,7 @@ module.exports = {
                             description: currentStoreScrapper.description,
                             price: currentStoreScrapper.price,
                             externalId: currentStoreScrapper.externalId,
-                            store: storeId
+                            store: stores.id
                         }
                     )
                     .then( function (storeScrappers) {
@@ -90,12 +87,14 @@ module.exports = {
                         // we saved the store and the storeScrappers information and now
                         // we just want to associate the new storeScrappers saved back to the
                         // store on the Store table in the database
-                        return Store.update(
-                            { id: storeScrappers.store },   // find criteria
-                            {
-                                storescrapperdata: storeScrappers.id // data to save
-                            }
-                        )
+                        stores.storescrapper = storeScrappers.id;
+                        // return Store.update(
+                        //     { id: storeScrappers.store },   // find criteria
+                        //     {
+                        //         storescrapper: storeScrappers.id // data to save
+                        //     }
+                        // )
+                        return stores.save()
                         .catch( function (err) {
                             Log.create({
                                 service: 'Database - waterline.initialize',

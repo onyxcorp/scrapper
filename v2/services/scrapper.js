@@ -1,6 +1,7 @@
 var Crawler = require('crawler'),
     url = require('url'),
     validUrl = require('valid-url'),
+    request = require('request-promise'),
     http = require('http'),
     Q = require('q'),
     sizeOf = require('image-size'),
@@ -74,3 +75,5 @@ function scrapper(url, config, callback) {
         }
     }]);
 }
+
+module.exports = scrapper;

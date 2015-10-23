@@ -19,6 +19,7 @@
     "q": "^1.2.0",
     "react": "^0.12.1",
     "reactify": "^0.17.1",
+    "request-promise": "^1.0.2",
     "sails-mysql": "^0.11.0",
     "superagent": "^0.21.0",
     "transmuter": "git+https://github.com/onyxcorp/transmuter",

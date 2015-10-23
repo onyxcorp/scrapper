@@ -1,22 +1,29 @@
-var Xml2js = require('xml2js'),
-    parser = new Xml2js.Parser({
-        normalize: true,
-        trim: true
-    });
+var Promise = require('bluebird'),
+    xml2jsP = Promise.promisifyAll(require('xml2js')),
+    request = require('request-promise');
 
 // GET THE XML AND PARSE IT
-function xmlParser(link, callback) {
+function xmlParser(sitemapLink) {
 
-    http.get(link, function (response) {
+    return request(sitemapLink)
+    .then( function(htmlString) {
 
-        parser.parseString(response, function (err, result) {
-            console.dir(result);
+        return xml2jsP.parseStringAsync(htmlString)
+        .then( function (result) {
             console.log('Done');
-            callback(JSON.stringify(response));
+            console.log(result);
+            return result;
+        })
+        .catch( function (err) {
+            console.log('parser.parseString error');
+            console.log(err);
+            return err;
         });
 
+    })
+    .catch(function (err) {
+        console.log('catch err on request for xmlParser');
     });
-
 }
 
 // IF THE OBTAINED LINK IS A VALID PRODUCT URL, USE THE scrapper
