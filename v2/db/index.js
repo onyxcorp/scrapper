@@ -1,4 +1,5 @@
 var Waterline = require('waterline'),
+    Promise = require('bluebird'),
     mysqlAdapter = require('sails-mysql'),
     collections = require('./models'),
     data = require('./data'),
@@ -7,8 +8,9 @@ var Waterline = require('waterline'),
 waterline.loadCollection(collections.product);
 waterline.loadCollection(collections.productPriceHistory);
 waterline.loadCollection(collections.store);
-waterline.loadCollection(collections.storeConfig);
+waterline.loadCollection(collections.storeScrapper);
 waterline.loadCollection(collections.tag);
+waterline.loadCollection(collections.log);
 
 // set up the storage configuration for waterline
 var config = {
@@ -32,28 +34,108 @@ var config = {
 module.exports = {
     initialize: function (callback) {
         waterline.initialize(config, function (err, db) {
+
             if (err) {
-                return console.error(err);
+                callback(err);
+                return false;
             }
 
             var Store = db.collections.store;
-            var StoreConfig = db.collections.storeConfig;
+            var StoreScrapper = db.collections.storescrapper;
+            var Log = db.collections.log;
 
-            data.store.forEach(function (storeData) {
-                Store.findOrCreate({
-                    name: storeData.name,
-                    link: storeData.link
+            Promise.each(data.store, function (storeData) {
+
+                // this return is what makes the Promise.each works as expected
+                return Store.findOrCreate(
+                    { slug: storeData.slug },   // find criteria
+                    {
+                        name: storeData.name,   // data to save
+                        slug: storeData.slug,
+                        robots: storeData.robots,
+                        sitemap: storeData.sitemap,
+                        link: storeData.link,
+                    }
+
+                )
+                .then( function (stores) {
+
+                    // stores are an array of the data found or a single one
+                    // but since on the first argument we are searching using
+                    // a field that is set as UNIQUE we can be sure that the
+                    // stores are actually a single store
+                    return [stores.id, data.storeScrapper[stores.slug]];
+
+                })
+                .spread( function (storeId, currentStoreScrapper) {
+
+                    // now that we have the store saved, lets save also its
+                    // scrapper data configuration, we also have to return it
+                    // so the outermost .then is called (the one being used with the Promise.each)
+                    // 2ND LEVEL OF SAVING DATA
+                    return StoreScrapper.findOrCreate(
+                        { store: storeId },   // find criteria
+                        {
+                            name: currentStoreScrapper.name,    // data to save
+                            link: currentStoreScrapper.link,
+                            image: currentStoreScrapper.image,
+                            description: currentStoreScrapper.description,
+                            price: currentStoreScrapper.price,
+                            externalId: currentStoreScrapper.externalId,
+                            store: storeId
+                        }
+                    )
+                    .then( function (storeScrappers) {
+
+                        // we saved the store and the storeScrappers information and now
+                        // we just want to associate the new storeScrappers saved back to the
+                        // store on the Store table in the database
+                        return Store.update(
+                            { id: storeScrappers.store },   // find criteria
+                            {
+                                storescrapperdata: storeScrappers.id // data to save
+                            }
+                        )
+                        .catch( function (err) {
+                            Log.create({
+                                service: 'Database - waterline.initialize',
+                                error: err.name,
+                                message: err.message,
+                                extraInformation: 'Este erro originou enquanto tentava-se atualizar a Store com o ID de sua respectivo StoreScrapper'
+                            });
+                        });
+
+                    })
+                    .catch( function (err) {
+                        Log.create({
+                            service: 'Database - waterline.initialize',
+                            error: err.name,
+                            message: err.message,
+                            extraInformation: 'Este erro originou enquanto tentava-se adicionar informações a collection StoreScrapper'
+                        });
+                    });
+
+                })
+                .catch( function (err) {
+                    Log.create({
+                        service: 'Database - waterline.initialize',
+                        error: err.name,
+                        message: err.message,
+                        extraInformation: 'Este erro originou enquanto tentava-se adicionar informações a Store'
+                    });
+                });
+            })
+            .then( function (result) {
+                callback(db);
+            })
+            .catch( function (err) {
+                Log.create({
+                    service: 'Database - waterline.initialize',
+                    error: err.name,
+                    message: err.message,
+                    extraInformation: 'Este erro originou enquanto executava-se o Loop que adiciona informações a Store'
                 });
             });
-
-            data.storeConfig.forEach( function (storeConfigData) {
-                StoreConfig.findOrCreate({
-                    robots: storeConfigData.robots,
-                    sitemap: storeConfiData.sitemap,
-                    scrapper: storeConfigData.scrapper
-                });
-            });
-            callback(db);
         });
     }
 };

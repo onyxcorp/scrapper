@@ -24,9 +24,9 @@ module.exports = {
         // between other stores
         externalId: 'string',
 
-        // Add a reference to productPriceHistory (has-Many)
-        product_price_history: {
-            collection: 'product_price_history',
+        // Add a reference to productpricehistory (has-Many)
+        productpricehistory: {
+            collection: 'productpricehistory',
             via: 'owner'
         },
 

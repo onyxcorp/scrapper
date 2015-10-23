@@ -11,14 +11,29 @@ module.exports = {
             unique: true
         },
 
+        slug: {
+            type: 'string',
+            unique: true
+        },
+
+        robots: {
+            type: 'string',
+            unique: true
+        },
+
+        sitemap: {
+            type: 'string',
+            unique: true
+        },
+
         link: {
             type: 'string',
             unique: true
         },
 
-        // Add a reference to storeConfig (one-to-one)
-        store_config: {
-            model: 'store_config'
+        // Add a reference to storescrapperdata (one-to-one)
+        storescrapper: {
+            model: 'storescrapper'
         },
 
         // Add a reference to products (has-Many)
