@@ -3,6 +3,7 @@ var Waterline = require('waterline'),
     mysqlAdapter = require('sails-mysql'),
     collections = require('./models'),
     data = require('./data'),
+    types = require('../utils/types'),
     waterline = new Waterline();
 
 waterline.loadCollection(collections.product);
@@ -43,6 +44,24 @@ module.exports = {
             var Store = db.collections.store;
             var StoreScrapper = db.collections.storescrapper;
             var Log = db.collections.log;
+
+            Log.error = function (errorObject) {
+                if (!types.isObject(errorObject)) throw new TypeError('Log.error argument should be an object');
+                // TODO must check for invalid keys, here are checking only if the keys exists
+                if (
+                    !errorObject.service ||
+                    !errorObject.error ||
+                    !errorObject.message ||
+                    !errorObject.extraInformation
+                ) throw new Error('Log.error errorObject malformed, allowed keys are service, error, message and extraInformation');
+
+                console.error(errorObject.error);
+                console.error(errorObject.message);
+                Log.create(errorObject)
+                .catch( function (err) {
+                    console.error('Error while executing Log.create method');
+                });
+            };
 
             Promise.each(data.store, function (storeData) {
 
@@ -101,12 +120,15 @@ module.exports = {
                                 error: err.name,
                                 message: err.message,
                                 extraInformation: 'Este erro originou enquanto tentava-se atualizar a Store com o ID de sua respectivo StoreScrapper'
+                            })
+                            .catch( function (err) {
+                                console.error('Error while trying to set a log');
                             });
                         });
 
                     })
                     .catch( function (err) {
-                        Log.create({
+                        Log.error({
                             service: 'Database - waterline.initialize',
                             error: err.name,
                             message: err.message,
@@ -116,7 +138,7 @@ module.exports = {
 
                 })
                 .catch( function (err) {
-                    Log.create({
+                    Log.error({
                         service: 'Database - waterline.initialize',
                         error: err.name,
                         message: err.message,
@@ -128,7 +150,7 @@ module.exports = {
                 callback(db);
             })
             .catch( function (err) {
-                Log.create({
+                Log.error({
                     service: 'Database - waterline.initialize',
                     error: err.name,
                     message: err.message,

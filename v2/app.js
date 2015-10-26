@@ -1,3 +1,5 @@
+require('./utils/global.js');
+
 var Promise = require('bluebird'),
     Crawler = require('crawler'),
     services = require('./services'),
@@ -12,28 +14,14 @@ db.initialize( function (databaseInstance) {
 
     Store.find()
     .populate('storescrapper')
-    .then( function (stores) {
-
-        return Promise.each(stores, function (store) {
-            return services.xmlParser(store.sitemap);
-        });
-
-    })
-    .then( function (listOfProducts) {
-
-        console.log('then after xmlParser');
-
-        // GET THE LIST OF PRODUCTS
-
-        // PARSE THE LIST USING THE SCRAPPER FUNCTION
-
-    })
+    .then(services.xmlParser)
+    .then(services.scrapper)
     .catch( function (err) {
-        Log.create({
+        Log.error({
             service: 'App - waterline.initialize callback',
             error: err.name,
             message: err.message,
-            extraInformation: 'Este erro originou enquanto tentava-se retornar as Stores e seus respectivos scrappers do banco'
+            extraInformation: err.extraInformation || 'Este erro originou ao tentar retornar os Sitemaps e Scrappear as informações das Stores'
         });
     });
 });

@@ -8,24 +8,24 @@ module.exports = {
         "price": ".instant-price",
         "externalId": "span[itemprop='productID']"
     },
-    'megaforma-suplementos': {
-        "category": ".breadcrumbs > li > a:second",
-        "supplier": ".product-description-l > a",
-        "name": "#content > h1",
-        "image": ".cloud-zoom > img",
-        "description": "#tab-description",
-        "price": ".price",
-        "externalId": "input[name='id_produto']"
-    },
-    'madrugao-suplementos': {
-        "category": null,
-        "supplier": ".brand > a",
-        "name": ".product-name > h1",
-        "image": ".MagicZoomPlus > img",
-        "description": "",
-        "price": ".preco-cor2",
-        "externalId": "input[name='product_id']"
-    }
+    // 'megaforma-suplementos': {
+    //     "category": ".breadcrumbs > li > a:second",
+    //     "supplier": ".product-description-l > a",
+    //     "name": "#content > h1",
+    //     "image": ".cloud-zoom > img",
+    //     "description": "#tab-description",
+    //     "price": ".price",
+    //     "externalId": "input[name='id_produto']"
+    // },
+    // 'madrugao-suplementos': {
+    //     "category": null,
+    //     "supplier": ".brand > a",
+    //     "name": ".product-name > h1",
+    //     "image": ".MagicZoomPlus > img",
+    //     "description": "",
+    //     "price": ".preco-cor2",
+    //     "externalId": "input[name='product_id']"
+    // }
     // "foo": {
     //     robots: "",
     //     sitemap: {
