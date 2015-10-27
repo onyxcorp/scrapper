@@ -15,6 +15,7 @@ db.initialize( function (databaseInstance) {
     Store.find()
     .populate('storescrapper')
     .then(services.xmlParser)
+    .then(services.cacheLinks)
     .then(services.scrapper)
     .catch( function (err) {
         Log.error({

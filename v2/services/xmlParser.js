@@ -3,6 +3,7 @@ var Promise = require('bluebird'),
     xml2jsP = Promise.promisifyAll(require('xml2js')),
     validUrl = require('valid-url'),
     request = require('request-promise'),
+    lodash = require('lodash'),
     types = require('../utils/types.js');
 
 var parser = Promise.method( function (htmlString) {
@@ -52,20 +53,6 @@ var requestSitemap = Promise.method( function (sitemapLink) {
     // will receive an htmlString from the request and parse it as a json
     .then(parser)
 
-    // returned values from the parser, should be links to new XML or an Error object
-    .then( function (linksOrError) {
-
-        // if its links, its valid XML links
-        // if Errors, means we already reached the end of this
-        if (types.isError(linksOrError)) {
-            console.log('errors!', sitemapLink);
-            return linksOrError;     // invalid xml links
-        } else {
-            console.log('links!', sitemapLink);
-            return linksOrError;    // valid xml links
-        }
-    })
-
     // this catch will be exclusive to handle errors from the request module
     // this is suposed to catch network problems or stuffs like that
     .catch( function (err) {
@@ -91,29 +78,34 @@ var recursiveXml = Promise.method( function (link, links) {
                 // because that is the part respnsible for fetching the data
                 return requestSitemap(link)
                 .then(function (newLinks) {
+
                     return recursiveXml(newLinks[0], newLinks);
+
                 })
                 .catch(function (err) {
+
                     // if the request fails it will be caught here
                     // the thing is, the only elements caugh here will be the ones
                     // that suposedly belonged to a valid XML list, so we should
                     // retry feching their data here
-                    console.log('***** inner catch try again - ', link);
-                    console.log(err);
 
                     return requestSitemap(link)
                     .then(function (newLinks) {
-                        console.log('***** trying again the link - ', link);
+
                         return recursiveXml(newLinks[0], newLinks);
+
                     })
                     .catch( function (err) {
-                        console.log('*****///**** inner catch try YET AGAIN - give up', link);
-                        console.log(err);
+
+                        // the request failed again, we should just give up
+                        // on trying to get the links from this one...
+                        // return an emnpty string (it can be filtered out later)
+                        return '';
                     });
 
                 });
 
-            }, { concurrency: 10 });    // max 2 requests each time
+            }, { concurrency: 5 });    // max 5 requests each time
 
         } else {
 
@@ -124,7 +116,8 @@ var recursiveXml = Promise.method( function (link, links) {
 
     })
     .catch(function (err) {
-        // if we got here that might mean network problems, retry the recursiveXml method
+        // if we got here that might mean network problems
+        console.log('recursiveXml - an error ocurred');
         throw err;
     });
 
@@ -157,7 +150,7 @@ var xmlParser = Promise.method( function(stores) {
                         name: store.name,
                         slug: store.slug,
                         storescrapper: store.storescrapper,
-                        products: links
+                        products: lodash.flatten(lodash.without(links, ''))
                     }
                 );
             });
