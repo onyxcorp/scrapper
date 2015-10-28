@@ -1,0 +1,1 @@
+{"classifier":{"classFeatures":{"supplier":{"0":2,"1":2,"2":2,"3":2}},"classTotals":{"supplier":3},"totalExamples":3,"smoothing":1},"docs":[{"label":"supplier","text":["optimum","nutrit"]},{"label":"supplier","text":["integr","medica"]}],"features":{"optimum":1,"nutrit":1,"integr":1,"medica":1},"stemmer":{},"lastAdded":2,"events":{"domain":null,"_events":{},"_eventsCount":0}}

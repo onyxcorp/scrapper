@@ -16,6 +16,7 @@
     "lodash": "^3.10.1",
     "lodash-node": "git+https://github.com/lodash/lodash-node.git#2.4.1",
     "model": "git+https://github.com/onyxcorp/model",
+    "natural": "^0.2.1",
     "node-jsx": "^0.12.4",
     "node-schedule": "^0.1.13",
     "object-assign": "^4.0.1",
@@ -30,7 +31,6 @@
     "url": "^0.10.2",
     "valid-url": "^1.0.9",
     "waterline": "^0.10.26",
-    "xml-flow": "^0.3.0",
     "xml2js": "^0.4.13"
   },
   "devDependencies": {},

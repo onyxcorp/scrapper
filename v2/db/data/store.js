@@ -7,6 +7,13 @@ module.exports = [
         sitemap: "http://www.corpoidealsuplementos.com.br/sitemap/index"
     },
     // {
+    //     name: 'Netshoes',
+    //     slug: 'netshoes',
+    //     link: 'http://www.netshoes.com.br/',
+    //     robots: 'http://www.netshoes.com.br/robots.txt',
+    //     sitemap: 'http://www.netshoes.com.br/sitemap.xml'
+    // },
+    // {
     //     name: 'Megaforma Suplementos',
     //     slug: 'megaforma-suplementos',
     //     link: 'https://megaformasuplementos.com.br/',

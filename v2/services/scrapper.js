@@ -3,6 +3,7 @@ var Promise = require('bluebird'),
     // Crawler = require('crawler'),
     // url = require('url'),
     // validUrl = require('valid-url'),
+    userAgentSpinner = require('../utils/userAgentSpinner'),
     request = require('request-promise');
     // sizeOf = require('image-size'),
     // crawler = new Crawler({
@@ -11,43 +12,62 @@ var Promise = require('bluebird'),
 
 // EXTRACT INFORMATION FROM THE CURRENT PAGE
 
+var parser = Promise.method( function ($, storeScrapper) {
+    console.log('running crawler');
+    console.log($('h1[itemprop="name"]').text());
 
-// var scrapper = Promise.method( function (stores) {
-//
-//     // loop through the stores
-//     return Promise.map(stores, function (store) {
-//
-//         // loop through the products
-//         return Promise.map(store.products, function (product) {
-//
-//             // request the product page link
-//             return request({
-//                 uri: product,
-//                 transform: function (body) {
-//                     return cheerio.load(body);
-//                 }
-//             })
-//             .then(function ($) {
-//
-//                 // crawl the html as jquery
-//
-//             })
-//             .catch( function (err) {
-//
-//                 // Crawling failed or Cheerio choked...
-//
-//             });
-//
-//         }, { concurrency: 2 });    // max 2 requests each time
-//
-//     });
-//
-// });
+    // TODO when fetching for image, use the google bot image
+    // #ref http://www.useragentstring.com/Googlebot-Image1.0_id_1078.php
+    // Googlebot-Image/1.0
+});
 
-function scrapper(stores) {
+var scrapper = Promise.method( function (stores) {
 
     console.log('services.scrapper');
-    console.log(stores);
+    // loop through the stores
+    // return Promise.map(stores, function (store) {
+
+        // loop through the products
+        // return Promise.map(store.products, function (product) {
+
+        var product = 'http://www.corpoidealsuplementos.com.br/l-g-glutamina-300g-max-titanium-388-p37233';
+
+            // request the product page link
+            return request({
+                uri: product,
+                headers: {
+                    'User-Agent': userAgentSpinner()
+                },
+                transform: function (body) {
+                    return cheerio.load(body);
+                }
+            })
+            .then(function ($) {
+
+                console.log('request concluded');
+
+                // crawl the html as jquery
+                return parser($, stores[0].storescrapper);
+
+            })
+            .catch( function (err) {
+
+                console.log('request error');
+                console.log(err);
+                // Crawling failed or Cheerio choked...
+
+            });
+
+        // }, { concurrency: 2 });    // max 2 requests each time
+
+    // });
+
+});
+
+// function scrapper(stores) {
+//
+//     console.log('services.scrapper');
+//     console.log(stores);
 
     // this variables should be in sync with the store_config.js data
     // var name,
@@ -110,6 +130,6 @@ function scrapper(stores) {
     //         }
     //     }
     // }]);
-}
+// }
 
 module.exports = scrapper;
