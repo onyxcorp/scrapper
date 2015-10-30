@@ -23,21 +23,20 @@ var config = {
     connections: {
         localhost: {
             adapter: 'mysql',
-            host: '127.0.0.1',
+            host: 'localhost',
             database: 'scrapper',
             user: 'root',
-            password: ''
+            password: 'root'
         }
     }
 };
-
 
 module.exports = {
     initialize: function (callback) {
         waterline.initialize(config, function (err, db) {
 
             if (err) {
-                callback(err);
+                callback(err, null);
                 return false;
             }
 
@@ -147,7 +146,7 @@ module.exports = {
                 });
             })
             .then( function (result) {
-                callback(db);
+                callback(null, db);
             })
             .catch( function (err) {
                 Log.error({

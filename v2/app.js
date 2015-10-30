@@ -5,7 +5,13 @@ var Promise = require('bluebird'),
     services = require('./services'),
     db = require('./db');
 
-db.initialize( function (databaseInstance) {
+db.initialize( function (err, databaseInstance) {
+
+    if (err) {
+        console.error('Erro loading database');
+        console.error(err);
+        throw err;
+    }
 
     console.log('everything just loaded');
 

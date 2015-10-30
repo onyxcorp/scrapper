@@ -28,6 +28,7 @@
     "reactify": "^0.17.1",
     "request-promise": "^1.0.2",
     "sails-mysql": "^0.11.0",
+    "slug": "^0.9.1",
     "superagent": "^0.21.0",
     "transmuter": "git+https://github.com/onyxcorp/transmuter",
     "underscore.string": "^3.0.3",
@@ -39,7 +40,8 @@
   "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "train": "node ./v2/services/ai/trainers/index.js"
   },
   "browserify": {
     "transform": [
