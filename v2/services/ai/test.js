@@ -15,24 +15,16 @@ slug.defaults.modes['rfc3986'] = {
 
 slug.defaults.mode = 'rfc3986';
 
-var firstProductTokens = tokenizer.tokenize(slug('SUPER WHEY 100% PURE 907 G BODY SIZE - 4 sports life'));
-var secondProductTokens = tokenizer.tokenize(slug('100% Pure Whey (900g) - Probiótica'));
+/**
+ *      CLASSIFY PRODUCT SUPPLIER (Integralmedica, Probiotica, etc)
+ *
+ */
 
-// console.log(firstProductTokens);
-// console.log(secondProductTokens);
 
-// console.log(NGrams.trigrams(firstProductTokens));
-
-// console.log(natural.JaroWinklerDistance(firstProductTokens, secondProductTokens));
-
-natural.BayesClassifier.load('./classifiers/supplier.json', null, function(err, classifier) {
-  // console.log(classifier.getClassifications('SUPER WHEY 100% PURE 907 G BODY SIZE - 4 sports life'));
-  // firstProductTokens.forEach(function (token) {
-  //   console.log(token, classifier.classify(token));
-  //   console.log(classifier.getClassifications(token));
-  // });
-});
-
+/**
+ *      CLASSIFY PRODUCT TYPE (Proteina, Aminoacido, Albumina, Waxy Maize, etc)
+ *
+ */
 natural.BayesClassifier.load('./classifiers/type.json', null, function(err, classifier) {
     var testData = require('./trainers/typeTestData.js'),
         correctItems = 0,
