@@ -61,33 +61,74 @@ slug.defaults.mode = 'rfc3986';
  *      CLASSIFY PRODUCT SUPPLIER (IntegralMedica, Probiotica, New Millen)
  *
  */
-natural.BayesClassifier.load('./classifiers/supplier.json', null, function(err, classifier) {
-    var correctItems = 0,
-        totalItems = 0;
 
+/**
+ *      FIRST TRY TO FIND WITH REGEX
+ */
+var suppliers = require('./data/suppliers.js');
+
+var correctItems = 0,
     totalItems = testData.length;
 
-    testData.forEach( function (item) {
-
-        var selectedTokens = [],
-            testTokens = tokenizer.tokenize(slug(item.title));
-
-        testTokens.forEach(function (token) {
-            var classification = classifier.getClassifications(token);
-            // console.log(token);
-            // console.log(classification);
-            // console.log(classification[0].value, token);
-            if (classification[0].value < 1) {
-                selectedTokens.push(token);
+testData.forEach( function (item) {
+    var notFound = true;
+    suppliers.forEach( function (supplier) {
+        var regex = new RegExp(slug(supplier), 'gi');
+        var slugifiedTitle = slug(item.title);
+        if (slugifiedTitle.search(regex) !== -1) {
+            if (slug(item.supplier) === slug(supplier)) {
+                correctItems += 1;
+                notFound = false;
+                return;
             }
-        });
-
-        console.log(selectedTokens);
+        }
     });
-
-    console.log('% of correct matches', correctItems / totalItems);
-
+    if (notFound) {
+        console.log('Not Found!');
+        console.log(item.supplier, item.title);
+    }
 });
+
+console.log('% of correct matches for regex supplier', correctItems / totalItems);
+
+//  NOTHING FOUND REGEX ON REGEX, TRY TO FIND THROUGH NAIVE BAYESIAN
+
+/**
+ *
+ */
+
+/**
+ *
+ *      CLASSIFY PRODUCT SUPPLIER (IntegralMedica, Probiotica, New Millen)
+ *
+ */
+// natural.BayesClassifier.load('./classifiers/supplier.json', null, function(err, classifier) {
+//     var correctItems = 0,
+//         totalItems = 0;
+//
+//     totalItems = testData.length;
+//
+//     testData.forEach( function (item) {
+//
+//         var selectedTokens = [],
+//             testTokens = tokenizer.tokenize(slug(item.title));
+//
+//         testTokens.forEach(function (token) {
+//             var classification = classifier.getClassifications(token);
+//             // console.log(token);
+//             // console.log(classification);
+//             // console.log(classification[0].value, token);
+//             if (classification[0].value < 1) {
+//                 selectedTokens.push(token);
+//             }
+//         });
+//
+//         console.log(selectedTokens);
+//     });
+//
+//     console.log('% of correct matches', correctItems / totalItems);
+//
+// });
 
 /**
  *
