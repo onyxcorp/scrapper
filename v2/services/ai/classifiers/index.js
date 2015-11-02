@@ -1,2 +1,2 @@
-// require('./type.js');
+require('./type.js');
 require('./supplier.js');

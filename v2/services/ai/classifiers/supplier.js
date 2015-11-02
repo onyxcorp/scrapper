@@ -1,90 +1,10 @@
 var natural = require('natural'),
-    classifier = new natural.BayesClassifier();
+    classifier = new natural.BayesClassifier(),
+    suppliers = require(__dirname + '/../data/suppliers.js');
 
-// levenshteinDistance = natural.LevenshteinDistance,
-
-// a slugified version of all possible suppliers
-var supplierKeywords = [
-    '3vs nutrition',
-    '4 fuel',
-    '4 sports life',
-    '4 plus nutrition',
-    'abb performance',
-    'absolute nutrition',
-    'adaptogen science',
-    'ads',
-    'ast',
-    'all max',
-    'allmax',
-    'arnold nutrition',
-    'arnold schwarzenegger',
-    'bngr',
-    'bsn',
-    'barleans',
-    'blender bottle',
-    'body action',
-    'body size',
-    'champion nutrition',
-    'clean bottle',
-    'cytosport',
-    'designer',
-    'dymatize',
-    'doctor',
-    'eas',
-    'ethika',
-    'fama',
-    'gaspari',
-    'gat',
-    'genetics tech',
-    'harbinger',
-    'integral medica',
-    'integralmedica',
-    'labrada',
-    'luz',
-    'max titanium',
-    'mhp',
-    'millenium',
-    'muscle meds',
-    'musclemeds',
-    'muscletech',
-    'muscle pharm',
-    'natures best',
-    'naturovos',
-    'new millen',
-    'nutrabolics',
-    'nutrex',
-    'nutrice',
-    'nutrilatina',
-    'nutrilatina renovee',
-    'oh yeah iss',
-    'one sport',
-    'optimum nutrition',
-    'pacific health',
-    'polar bottle',
-    'probiotica',
-    'prolab',
-    'pro premium line',
-    'revolution',
-    'saltos',
-    'sportpharma',
-    'syntrax',
-    'twinlab',
-    'universal nutrition',
-    'vpx sports',
-    'vitafor'
-];
-
-
-/**
- *
- *      USSING NAIVE BAYES CLASSIFIER
- *
- */
-
-
-supplierKeywords.forEach(function (supplier) {
+suppliers.forEach(function (supplier) {
     classifier.addDocument(supplier, 'Supplier');
-})
+});
 
 classifier.train();
 
